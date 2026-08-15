@@ -11,6 +11,7 @@ curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/insta
 ```
 
 ツールを導入し、Git 周りの設定を行う。
+clone 先は ghq の設定に従うため、実際のパスは install.sh が表示してクリップボードへ入れる。
 
 ```sh
 cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh
@@ -38,7 +39,7 @@ mise run setup
 
 ## 構成
 
-```
+```text
 mise-dotfiles/
 ├── install.sh          curl の入口。clone するだけ
 ├── bin/

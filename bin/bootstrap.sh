@@ -39,8 +39,11 @@ activate_homebrew() {
 ensure_homebrew() {
   if ! command -v brew >/dev/null 2>&1; then
     # sudo を求めるので隠せない。境界だけ示して生ログを流す。
+    #
+    # NONINTERACTIVE は付けない。付けるとインストーラが sudo -n で権限を確かめ、
+    # パスワードを要求する端末では abort する。確認の Enter 待ちは許容する。
     ui_external_begin 'Homebrew installer'
-    NONINTERACTIVE=1 /bin/bash -c \
+    /bin/bash -c \
       "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     ui_external_end
 
@@ -116,12 +119,16 @@ print_gitconfig_preview() {
 # git は ~/.gitconfig が存在すると ~/.config/git/config を読まなくなる。
 # ここで書く値は ~/.gitconfig に入るので、後から共有設定を include で足しても
 # include より後ろに残り、端末固有の値として勝ち続ける。
+#
+# commit には name と email の両方が要る。片方でも欠けていれば対話に入り、
+# 残っている方は既定値として提示するので Enter で維持できる。
 ensure_git_identity() {
-  local current_email
+  local current_name current_email
+  current_name=$(git config --get user.name || true)
   current_email=$(git config --get user.email || true)
 
-  if [ -n "$current_email" ]; then
-    ui_status kept 'user.name' "$(git config --get user.name || true)"
+  if [ -n "$current_name" ] && [ -n "$current_email" ]; then
+    ui_status kept 'user.name' "$current_name"
     ui_status kept 'user.email' "$current_email"
     printf '\n'
     ui_note '既に設定済みなので変更しません。'
@@ -143,8 +150,8 @@ ensure_git_identity() {
   fi
   printf '\n'
 
-  name=$(ask_until_answered 'name' "${suggested_name:-$login}")
-  email=$(ask_until_answered 'email' "$noreply")
+  name=$(ask_until_answered 'name' "${current_name:-${suggested_name:-$login}}")
+  email=$(ask_until_answered 'email' "${current_email:-$noreply}")
 
   print_gitconfig_preview "$name" "$email"
 
@@ -166,15 +173,16 @@ print_next_steps() {
   local next_command='mise run setup'
 
   ui_ready 'リポを編集して push できます'
+  ui_section 'Next Action'
 
+  # Homebrew をこの実行で入れた場合、親シェルには PATH が通っていない。
+  # 画面に出すコマンドとクリップボードの中身は必ず一致させる。
   if [ "$homebrew_needs_activation" = 1 ]; then
-    ui_note 'この端末ではまだ Homebrew の PATH が通っていません。'
-    ui_note '下のコマンドは PATH の読み込みを含んでいます。'
-    printf '\n'
-    next_command="eval \"\$($HOMEBREW_BIN shellenv)\" && mise run setup"
+    local activate_command="eval \"\$($HOMEBREW_BIN shellenv)\""
+    ui_next_step "$activate_command" 'Homebrew の PATH をこの端末に通す'
+    next_command="$activate_command && mise run setup"
   fi
 
-  ui_section 'Next Action'
   ui_next_step 'mise run setup' 'リポジトリが管理するツールを揃える'
   ui_next_step 'claude login' 'Claude Code の認証(未認証なら)'
   printf '\n'
