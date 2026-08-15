@@ -1,2 +1,54 @@
 # mise-dotfiles
-mise を司令塔にした macOS dotfiles
+
+mise をベースとした macOS 向けの dotfiles。
+
+## セットアップ
+
+リポジトリを ghq 配下に clone し、セットアップ用のコマンドをクリップボードへ入れる。
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/install.sh | bash
+```
+
+ツールを導入し、Git 周りの設定を行う。
+
+```sh
+cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh
+```
+
+このリポジトリで管理しているツールの導入や設定を適用する。
+
+```sh
+mise run setup
+```
+
+## bootstrap.sh が行うこと
+
+ツールのインストールと Git 周りの設定を行う。  
+`git config --get user.email` が値を返さない時だけ対話に入り、GitHub アカウントから候補を出す。  
+
+| ツール | インストール済みの場合 |
+|---|---|
+| Xcode Command Line Tools | 案内して終了(自動では入れない) |
+| Homebrew | 何もしない |
+| mise | 何もしない |
+| ghq / gh | 足りないものだけ入れる |
+| GitHub 認証 | 何もしない |
+| git の user.name / user.email | 何もしない |
+
+## 構成
+
+```
+mise-dotfiles/
+├── install.sh          curl の入口。clone するだけ
+├── bin/
+│   ├── bootstrap.sh    commit / push できる状態まで
+│   └── lib/
+│       ├── palette.sh  Panda 配色の単一ソース
+│       └── ui.sh       バナー・状態表示・対話
+└── mise.toml           全タスクの入口
+```
+
+## ライセンス
+
+MIT
