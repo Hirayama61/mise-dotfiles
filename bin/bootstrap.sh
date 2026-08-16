@@ -40,8 +40,10 @@ ensure_homebrew() {
   if ! command -v brew >/dev/null 2>&1; then
     # sudo を求めるので隠せない。境界だけ示して生ログを流す。
     #
-    # NONINTERACTIVE は付けない。付けるとインストーラが sudo -n で権限を確かめ、
-    # パスワードを要求する端末では abort する。確認の Enter 待ちは許容する。
+    # NONINTERACTIVE は付けない。付けると権限確認が sudo -n になり、パスワードを
+    # 要求する端末では abort する。代わりに確認の Enter 待ちを受け入れる。
+    # sudo -v は NOPASSWD が設定されていてもパスワードを求めるので、
+    # どちらの端末でも 1 度は入力が要る。
     ui_external_begin 'Homebrew installer'
     /bin/bash -c \
       "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"

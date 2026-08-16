@@ -37,6 +37,17 @@ mise run setup
 | GitHub 認証 | 何もしない |
 | git の user.name / user.email | 何もしない |
 
+Homebrew を新しく入れる場合は sudo のパスワードを求められる。
+`sudo -v` は NOPASSWD が設定されていてもパスワードを要求するため、どちらの端末でも 1 度は入力が要る。
+
+### SSH 越しにセットアップする場合
+
+GitHub の認証でブラウザを開けないため、表示されたコードを接続元のブラウザで入力する。
+
+1. `! First copy your one-time code: XXXX-XXXX` のコードを控える
+2. Enter を押す(ブラウザの起動には失敗するが認証は続く)
+3. 接続元のブラウザで <https://github.com/login/device> を開きコードを入力する
+
 ## 構成
 
 ```text
