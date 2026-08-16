@@ -38,9 +38,15 @@ ui_banner 'リポジトリの取得だけを行いました。環境はまだ変
 ui_status ok 'mise-dotfiles' "$clone_detail"
 ui_status ok 'path' "$short_dest"
 
+# bootstrap は子プロセスなので、そこで Homebrew を入れても親シェルの PATH は変わらない。
+# 人間が叩く 1 本のコマンドとして繋ぎ、呼び出し元の端末で eval を走らせる。
+# shellcheck disable=SC2016  # 人間の端末で評価させる文字列なので、ここでは展開しない
+homebrew_activation_command='eval "$(/opt/homebrew/bin/brew shellenv)"'
+
 ui_section 'Next Action'
 ui_next_step "cd $short_dest" ''
 ui_next_step './bin/bootstrap.sh' 'commit / push できる状態まで環境を整える'
+ui_next_step "$homebrew_activation_command" 'Homebrew の PATH をこの端末に通す'
 printf '\n'
-ui_clipboard "cd $short_dest && ./bin/bootstrap.sh"
+ui_clipboard "cd $short_dest && ./bin/bootstrap.sh && $homebrew_activation_command"
 printf '\n'

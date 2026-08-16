@@ -12,9 +12,10 @@ curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/insta
 
 ツールを導入し、Git 周りの設定を行う。
 clone 先は ghq の設定に従うため、実際のパスは install.sh が表示してクリップボードへ入れる。
+末尾の `eval` は、Homebrew を新しく入れた場合に PATH をこの端末へ通す。
 
 ```sh
-cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh
+cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh && eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
 このリポジトリで管理しているツールの導入や設定を適用する。
@@ -26,7 +27,7 @@ mise run setup
 ## bootstrap.sh が行うこと
 
 ツールのインストールと Git 周りの設定を行う。  
-`git config --get user.email` が値を返さない時だけ対話に入り、GitHub アカウントから候補を出す。  
+`user.name` と `user.email` のどちらかが欠けている時だけ対話に入り、GitHub アカウントから候補を出す。  
 
 | ツール | インストール済みの場合 |
 |---|---|
@@ -35,7 +36,7 @@ mise run setup
 | mise | 何もしない |
 | ghq / gh | 足りないものだけ入れる |
 | GitHub 認証 | 何もしない |
-| git の user.name / user.email | 何もしない |
+| git の user.name / user.email | 両方揃っていれば何もしない |
 
 Homebrew を新しく入れる場合は sudo のパスワードを求められる。
 `sudo -v` は NOPASSWD が設定されていてもパスワードを要求するため、どちらの端末でも 1 度は入力が要る。
