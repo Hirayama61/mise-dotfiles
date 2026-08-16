@@ -219,11 +219,17 @@ ui_ready() {
   ui_pause_line
 }
 
+# コマンドが 24 桁に収まらないと説明が直に続いて読めなくなるので、
+# 桁が足りない時も最低 2 つは空ける。
 ui_next_step() {
+  local command_text=$1 description=$2
+  local padding=$((24 - ${#command_text}))
+  [ "$padding" -lt 2 ] && padding=2
+
   ui_color "$PANDA_CYAN"
-  printf '     %-24s' "$1"
+  printf '     %s' "$command_text"
   ui_color "$PANDA_SUBTLE"
-  printf '%s\n' "$2"
+  printf '%*s%s\n' "$padding" '' "$description"
   ui_reset
   ui_pause_line
 }
@@ -231,6 +237,9 @@ ui_next_step() {
 # 戻り値を $() で受ける前提なので、プロンプトは stderr へ出す。
 # stdout に出すとプロンプトごとキャプチャされ、画面に何も出ないまま入力待ちになり、
 # 入力値に ANSI エスケープが混入する。
+#
+# $() の中で読むと Enter のエコーが画面に届かず、次のプロンプトが同じ行に続く。
+# 端末のエコーに頼らず自分で改行する。
 ui_ask() {
   local label=$1 default=$2 answer
 
@@ -245,6 +254,7 @@ ui_ask() {
   } >&2
 
   read -r answer
+  printf '\n' >&2
   printf '%s' "${answer:-$default}"
 }
 
