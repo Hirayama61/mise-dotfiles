@@ -14,11 +14,18 @@ Apple Silicon macOS 用の dotfiles。
 
 | 対象 | 役割 |
 |---|---|
-| `install.sh` | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone する |
-| `bin/bootstrap.sh` | このリポジトリに対して commit / push できる状態にする。このリポジトリに変更を加えるのはプライベート端末のみのため、git 周りの設定を `mise run setup` から分離している |
+| `install.sh` | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone/fetch する |
+| `bin/bootstrap.sh` | Homebrew / mise を用意して Deno の bootstrap を起動する最小ランチャー |
+| `bin/bootstrap.ts` | このリポジトリに対して commit / push できる状態にする |
 | `mise run setup` | このリポジトリで管理している設定を PC に適用する |
+| `mise run test` | Deno の format / lint / type check / test をまとめて実行する |
+
+## bootstrap の実装方針
+
+環境構築の判断ロジックや UI は TypeScript に置き、Shell は Deno を起動するために必要な処理だけに限定する。  
+副作用を伴わない判断ロジックは `bin/lib/bootstrap_logic.ts` に置き、`Deno.test` で仕様を固定する。
 
 ## 配色
 
-`bin/lib/palette.sh` が Panda 配色の単一ソース。  
+`bin/lib/palette.ts` が Panda 配色の単一ソース。  
 このリポジトリで管理している全てのツールの配色はこのテーマで統一すること。
