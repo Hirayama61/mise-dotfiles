@@ -10,10 +10,10 @@ bun = "1"
 
 [tasks.setup]
 description = "リポジトリが管理するツールを揃える"
-run = "mise install"
+run = ["mise install", "git config core.hooksPath .githooks"]
 
 [tasks.check]
-description = "TypeScript を format / lint / type check で検証する"
+description = "TypeScript と Markdown を format / lint で検証する"
 run = ["bun install --frozen-lockfile", "bun run check"]
 
 [tasks.docs]
