@@ -1,0 +1,11 @@
+{
+  "globs": ["**/*.md"],
+  "ignores": ["node_modules/**"],
+  "config": {
+    // 表の桁揃えは oxfmt が行うため、行の長さをここで縛れない。
+    // 本文は一文ごとに改行しているので長さの上限も意味を持たない。
+    "MD013": false,
+    // .github/pull_request_template.md は文書ではなく雛形で、見出し 2 から始まる。
+    "MD041": false,
+  },
+}
