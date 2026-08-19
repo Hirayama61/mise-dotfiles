@@ -1,5 +1,4 @@
 // リポジトリで管理する設定ファイルをホームディレクトリへ symlink する。
-// 配置先に symlink でない実体がある場合は、壊さず警告して終了コード 1 を返す。
 
 import { lstatSync, mkdirSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
@@ -7,12 +6,14 @@ import { dirname, join, resolve } from "node:path";
 
 const repoRoot = resolve(import.meta.dir, "..");
 
-// リポジトリ内パス → ホームディレクトリ配下の配置先
-const links: readonly (readonly [string, string])[] = [
-  ["claude/CLAUDE.md", ".claude/CLAUDE.md"],
-  ["claude/japanese-writing.md", ".claude/japanese-writing.md"],
-];
+// repo: リポジトリ内の作成元 / home: ホームディレクトリ配下の配置先
+const links = [
+  { repo: "claude/CLAUDE.md", home: ".claude/CLAUDE.md" },
+  { repo: "claude/coding.md", home: ".claude/coding.md" },
+  { repo: "claude/japanese-writing.md", home: ".claude/japanese-writing.md" },
+] as const;
 
+/** path を lstat した結果を返す。存在しなければ null。 */
 const lstatOrNull = (path: string) => {
   try {
     return lstatSync(path);
@@ -21,36 +22,43 @@ const lstatOrNull = (path: string) => {
   }
 };
 
-let blocked = 0;
+/**
+ * 1 件の symlink を作成し、成否を返す。
+ * 配置先に symlink でない実体がある場合は、壊さず警告して false を返す。
+ */
+const link = ({ repo, home }: { repo: string; home: string }): boolean => {
+  const repoPath = join(repoRoot, repo);
+  const homePath = join(homedir(), home);
 
-for (const [src, dest] of links) {
-  const srcPath = join(repoRoot, src);
-  const destPath = join(homedir(), dest);
-
-  if (lstatOrNull(srcPath) === null) {
-    console.error(`欠落: ${src} がリポジトリに無い`);
-    blocked += 1;
-    continue;
+  if (lstatOrNull(repoPath) === null) {
+    console.error(`欠落: ${repo} がリポジトリに無い`);
+    return false;
   }
 
-  const destStat = lstatOrNull(destPath);
-  if (destStat?.isSymbolicLink()) {
-    if (readlinkSync(destPath) === srcPath) {
-      console.log(`確認: ~/${dest}`);
-      continue;
+  const homeStat = lstatOrNull(homePath);
+  if (homeStat?.isSymbolicLink()) {
+    if (readlinkSync(homePath) === repoPath) {
+      console.log(`確認: ~/${home}`);
+      return true;
     }
-    unlinkSync(destPath);
-  } else if (destStat !== null) {
-    console.error(`退避が必要: ~/${dest} は symlink でないため上書きしない`);
-    blocked += 1;
-    continue;
+    unlinkSync(homePath);
+  } else if (homeStat !== null) {
+    console.error(`退避が必要: ~/${home} は symlink でないため上書きしない`);
+    return false;
   }
 
-  mkdirSync(dirname(destPath), { recursive: true });
-  symlinkSync(srcPath, destPath);
-  console.log(`作成: ~/${dest} -> ${src}`);
-}
+  mkdirSync(dirname(homePath), { recursive: true });
+  symlinkSync(repoPath, homePath);
+  console.log(`作成: ~/${home} -> ${repo}`);
+  return true;
+};
 
-if (blocked > 0) {
-  process.exit(1);
-}
+/** 対応表の全件を適用し、作成できなかった項目があれば終了コード 1 で終える。 */
+const main = (): void => {
+  const blocked = links.filter((entry) => !link(entry)).length;
+  if (blocked > 0) {
+    process.exit(1);
+  }
+};
+
+main();

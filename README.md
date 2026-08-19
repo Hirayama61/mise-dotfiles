@@ -89,6 +89,7 @@ mise-dotfiles/
 │       └── ui.sh       バナー・状態表示・対話
 ├── claude/
 │   ├── CLAUDE.md       Claude Code の全プロジェクト共通指示
+│   ├── coding.md       コーディング規約
 │   └── japanese-writing.md  日本語の文章規範
 ├── .githooks/
 │   └── pre-push        CodeRabbit へレビューを依頼する
