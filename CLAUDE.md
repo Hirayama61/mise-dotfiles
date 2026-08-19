@@ -17,7 +17,7 @@ Apple Silicon macOS 用の dotfiles。
 | `install.sh`       | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone する                                                                                                     |
 | `bin/bootstrap.sh` | このリポジトリに対して commit / push できる状態にする。このリポジトリに変更を加えるのはプライベート端末のみのため、git 周りの設定を `mise run setup` から分離している |
 | `mise run setup`   | このリポジトリで管理している設定を PC に適用する                                                                                                                      |
-| `mise run check`   | TypeScript と Markdown を format / lint で検証する                                                                                                                    |
+| `mise run check`   | TypeScript と Markdown を format / lint / type check で検証する                                                                                                       |
 
 ## スクリプトの実装言語
 

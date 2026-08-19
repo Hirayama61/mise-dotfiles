@@ -13,7 +13,7 @@ description = "リポジトリが管理するツールと設定を PC に適用�
 run = ["mise install", "bun bin/symlink.ts"]
 
 [tasks.check]
-description = "TypeScript と Markdown を format / lint で検証する"
+description = "TypeScript と Markdown を format / lint / type check で検証する"
 run = ["bun install --frozen-lockfile", "bun run check"]
 
 [tasks.docs]

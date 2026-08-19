@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "oxfmt --check . && oxlint --no-error-on-unmatched-pattern && markdownlint-cli2 && textlint \"**/*.md\""
+    "check": "oxfmt --check . && oxlint && tsc --noEmit && markdownlint-cli2 && textlint \"**/*.md\""
   },
   "devDependencies": {
     "@types/bun": "latest",

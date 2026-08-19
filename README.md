@@ -60,14 +60,18 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 mise run check
 ```
 
-`mise run check` が回す検証は 4 つ。
+`mise run check` が回す検証は 5 つ。
 
 | ツール            | 対象                         | 内容              |
 | ----------------- | ---------------------------- | ----------------- |
 | oxfmt             | TypeScript / JSON / Markdown | 整形              |
 | oxlint            | TypeScript                   | lint              |
+| tsc               | TypeScript                   | 型検査            |
 | markdownlint-cli2 | Markdown                     | 構造の lint       |
 | textlint          | Markdown                     | 日本語の文章 lint |
+
+Bun は型を検査せず、型を落として実行するだけ。
+型エラーを見つけるには `tsc --noEmit` が要る。
 
 Bun 公式ドキュメントの目次を `docs/bun-llms.txt` に置いている。
 各ページは `.md` 付きの URL で個別に取得できる。
