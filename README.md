@@ -83,7 +83,7 @@ mise-dotfiles/
 ├── install.sh          curl の入口。clone するだけ
 ├── bin/
 │   ├── bootstrap.sh    commit / push できる状態まで
-│   ├── link.ts         設定ファイルをホームディレクトリへ symlink する
+│   ├── symlink.ts      設定ファイルをホームディレクトリへ symlink する
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       └── ui.sh       バナー・状態表示・対話
