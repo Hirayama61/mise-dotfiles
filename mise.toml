@@ -9,8 +9,8 @@
 bun = "1"
 
 [tasks.setup]
-description = "リポジトリが管理するツールを揃える"
-run = ["mise install", "git config core.hooksPath .githooks"]
+description = "リポジトリが管理するツールと設定を PC に適用する"
+run = ["mise install", "git config core.hooksPath .githooks", "bun bin/symlink.ts"]
 
 [tasks.check]
 description = "TypeScript と Markdown を format / lint で検証する"
