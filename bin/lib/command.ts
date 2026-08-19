@@ -21,6 +21,14 @@ export class CommandRunner {
     };
   }
 
+  async checked(command: string, args: string[] = []): Promise<void> {
+    const result = await this.output(command, args);
+    if (result.code !== 0) {
+      const detail = result.stderr.trim() || result.stdout.trim();
+      throw new Error(`${command} failed (${result.code})${detail ? `: ${detail}` : ''}`);
+    }
+  }
+
   async succeeds(command: string, args: string[] = []): Promise<boolean> {
     try {
       return (await this.output(command, args)).code === 0;
