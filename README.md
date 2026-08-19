@@ -83,9 +83,13 @@ mise-dotfiles/
 ├── install.sh          curl の入口。clone するだけ
 ├── bin/
 │   ├── bootstrap.sh    commit / push できる状態まで
+│   ├── link.ts         設定ファイルをホームディレクトリへ symlink する
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       └── ui.sh       バナー・状態表示・対話
+├── claude/
+│   ├── CLAUDE.md       Claude Code の全プロジェクト共通指示
+│   └── japanese-writing.md  日本語の文章規範
 ├── .githooks/
 │   └── pre-push        CodeRabbit へレビューを依頼する
 ├── docs/
