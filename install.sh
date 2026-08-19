@@ -22,8 +22,13 @@ fi
 dest="$ghq_root/github.com/$REPO_SLUG"
 
 if [ -d "$dest/.git" ]; then
-  git -C "$dest" fetch --quiet origin
-  clone_detail="既にありました(更新を取得)"
+  # fetch だけでは作業ツリーが古いままになり、この直後に source する bin/lib と
+  # Next Action で案内する bootstrap.sh が最新にならない。
+  if git -C "$dest" pull --ff-only --quiet 2>/dev/null; then
+    clone_detail="既にありました(最新に更新)"
+  else
+    clone_detail="既にありました(更新できず。ローカルの変更を確認)"
+  fi
 else
   git clone --quiet "https://github.com/$REPO_SLUG.git" "$dest"
   clone_detail="取得しました"

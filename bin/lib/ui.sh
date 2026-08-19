@@ -267,7 +267,8 @@ ui_confirm() {
   printf '[Y/n] '
   ui_reset
 
-  read -r answer
+  # EOF は「答えられなかった」であって Yes ではない。空 Enter とは区別する。
+  read -r answer || return 1
   [ -z "$answer" ] || case "$answer" in [Yy]*) true ;; *) false ;; esac
 }
 
