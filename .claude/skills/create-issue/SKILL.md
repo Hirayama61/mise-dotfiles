@@ -9,7 +9,7 @@ disable-model-invocation: true
 依頼をそのままチケット化しない。解く価値のある Issue へ変換し、読み手(人間・AI エージェント)が本文だけで着手できる形にしてから GitHub へ残す。
 
 一度に扱う Issue は1件。候補が複数あっても一括生成しない。
-5分で直せる課題は Issue にせず、その場で直すことを提案する。
+現在の作業スコープ内で安全にその場で解消できる課題は、Issue にせず修正を提案する。
 
 DISCOVER → FRAME → GRILL → DRAFT → CREATE の順に進める。
 

@@ -21,7 +21,7 @@ Apple Silicon macOS 用の dotfiles。
 
 ## Issue 起案
 
-作業中に摩擦や課題を見つけたら、`/create-issue` の実行を提案する。Issue を作れるのはこのスキルだけ。
+Issue の起案は `/create-issue` で行う。作業中に摩擦や課題を見つけたら、実行を提案する。
 
 ## スクリプトの実装言語
 
