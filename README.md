@@ -91,6 +91,8 @@ mise-dotfiles/
 │   └── rules/          Claude Code が全プロジェクトで読む規約群
 │       ├── japanese-writing.md  日本語の文章規範(常時)
 │       └── typescript.md        コーディング規約(.ts を触るときだけ)
+├── .claude/
+│   └── rules/          このリポジトリだけで読む規約群
 ├── .githooks/
 │   └── pre-push        CodeRabbit へレビューを依頼する
 ├── docs/

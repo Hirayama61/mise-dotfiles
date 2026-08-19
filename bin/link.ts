@@ -1,5 +1,3 @@
-// リポジトリで管理する設定ファイルをホームディレクトリへ symlink する。
-
 import { lstatSync, mkdirSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -56,7 +54,11 @@ const link = ({ repo, home }: (typeof links)[number]): boolean => {
   return true;
 };
 
-/** 対応表の全件を適用し、作成できなかった項目があれば終了コード 1 で終える。 */
+/**
+ * リポジトリで管理する設定ファイルをホームディレクトリへ symlink する。
+ *
+ * 対応表の全件を適用し、作成できなかった項目があれば終了コード 1 で終える。
+ */
 const main = (): void => {
   const blocked = links.filter((entry) => !link(entry)).length;
   if (blocked > 0) {
