@@ -88,9 +88,9 @@ mise-dotfiles/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       └── ui.sh       バナー・状態表示・対話
 ├── claude/
-│   ├── CLAUDE.md       Claude Code の全プロジェクト共通指示
-│   ├── coding.md       コーディング規約
-│   └── japanese-writing.md  日本語の文章規範
+│   └── rules/          Claude Code が全プロジェクトで読む規約群
+│       ├── japanese-writing.md  日本語の文章規範(常時)
+│       └── typescript.md        コーディング規約(.ts を触るときだけ)
 ├── .githooks/
 │   └── pre-push        CodeRabbit へレビューを依頼する
 ├── docs/

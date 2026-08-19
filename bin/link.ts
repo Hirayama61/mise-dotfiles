@@ -7,11 +7,7 @@ import { dirname, join, resolve } from "node:path";
 const repoRoot = resolve(import.meta.dir, "..");
 
 // repo: リポジトリ内の作成元 / home: ホームディレクトリ配下の配置先
-const links = [
-  { repo: "claude/CLAUDE.md", home: ".claude/CLAUDE.md" },
-  { repo: "claude/coding.md", home: ".claude/coding.md" },
-  { repo: "claude/japanese-writing.md", home: ".claude/japanese-writing.md" },
-] as const;
+const links = [{ repo: "claude/rules", home: ".claude/rules" }] as const;
 
 /** path を lstat した結果を返す。存在しなければ null。 */
 const lstatOrNull = (path: string) => {
