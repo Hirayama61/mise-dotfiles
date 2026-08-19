@@ -4,7 +4,9 @@ mise をベースとした macOS 向けの dotfiles。
 
 ## セットアップ
 
-リポジトリを ghq 配下に clone し、セットアップ用のコマンドをクリップボードへ入れる。
+リポジトリを ghq 配下へ clone する。
+既にあれば最新へ更新する。
+あわせてセットアップ用のコマンドをクリップボードへ入れる。
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/install.sh | bash
@@ -12,9 +14,10 @@ curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/insta
 
 ツールを導入し、Git 周りを設定する。
 clone 先は ghq の設定に従うため、実際のパスは install.sh が表示してクリップボードへ入れる。
+末尾の `eval` は、Homebrew を新しく入れた場合に PATH をこの端末へ通す。
 
 ```sh
-cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh
+cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh && eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
 このリポジトリで管理しているツールの導入や設定を適用する。
@@ -26,7 +29,7 @@ mise run setup
 ## bootstrap.sh が行うこと
 
 ツールをインストールし、Git 周りを設定する。  
-`git config --get user.email` が値を返さない時だけ対話に入り、GitHub アカウントから候補を出す。
+`user.name` と `user.email` のどちらかが欠けている時だけ対話に入り、GitHub アカウントから候補を出す。
 
 | ツール                        | インストール済みの場合         |
 | ----------------------------- | ------------------------------ |
@@ -35,7 +38,7 @@ mise run setup
 | mise                          | 何もしない                     |
 | ghq / gh                      | 足りないものだけ入れる         |
 | GitHub 認証                   | 何もしない                     |
-| git の user.name / user.email | 何もしない                     |
+| git の user.name / user.email | 両方揃っていれば何もしない     |
 
 Homebrew を新しく入れる場合は sudo のパスワードを求められる。
 `sudo -v` は NOPASSWD が設定されていてもパスワードを要求するため、どちらの端末でも 1 度は入力が要る。
@@ -51,20 +54,24 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 ## 開発
 
 スクリプトと文書の検証には Bun を使う。
-`mise run setup` で Bun が入り、あわせて `core.hooksPath` が `.githooks` に向く。
+`mise run setup` で Bun が入る。
 
 ```sh
 mise run check
 ```
 
-`mise run check` が回す検証は 4 つ。
+`mise run check` が回す検証は 5 つ。
 
 | ツール            | 対象                         | 内容              |
 | ----------------- | ---------------------------- | ----------------- |
 | oxfmt             | TypeScript / JSON / Markdown | 整形              |
 | oxlint            | TypeScript                   | lint              |
+| tsc               | TypeScript                   | 型検査            |
 | markdownlint-cli2 | Markdown                     | 構造の lint       |
 | textlint          | Markdown                     | 日本語の文章 lint |
+
+Bun は型を検査せず、型を落として実行するだけ。
+型エラーを見つけるには `tsc --noEmit` が要る。
 
 Bun 公式ドキュメントの目次を `docs/bun-llms.txt` に置いている。
 各ページは `.md` 付きの URL で個別に取得できる。
@@ -73,14 +80,14 @@ Bun 公式ドキュメントの目次を `docs/bun-llms.txt` に置いている�
 ### CodeRabbit のレビュー依頼
 
 star が 10 未満の public リポジトリは CodeRabbit の自動レビュー対象外で、PR へ明示的に依頼しないとレビューが走らない。
-`.githooks/pre-push` が、push 先のブランチに開いている PR があれば `@coderabbitai review` を投稿する。
-PR を作る前の初回 push では PR がまだ無いため、最初の 1 回だけ手で依頼する。
+PR 画面のチェックボックスか、`@coderabbitai full review` のコメントで依頼する。
+`@coderabbitai review` は差分レビュー用で、自動レビューを pause した PR でしか効かない。
 
 ## 構成
 
 ```text
 mise-dotfiles/
-├── install.sh          curl の入口。clone するだけ
+├── install.sh          curl の入口。clone と更新だけ
 ├── bin/
 │   ├── bootstrap.sh    commit / push できる状態まで
 │   ├── symlink.ts      設定ファイルをホームディレクトリへ symlink する
@@ -93,8 +100,6 @@ mise-dotfiles/
 │       └── typescript.md        コーディング規約(.ts を触るときだけ)
 ├── .claude/
 │   └── rules/          このリポジトリだけで読む規約群
-├── .githooks/
-│   └── pre-push        CodeRabbit へレビューを依頼する
 ├── docs/
 │   └── bun-llms.txt    Bun 公式ドキュメントの目次
 ├── package.json        検証ツールの依存とスクリプト

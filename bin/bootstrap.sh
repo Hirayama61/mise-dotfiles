@@ -12,10 +12,6 @@ trap ui_show_cursor EXIT
 
 HOMEBREW_BIN=/opt/homebrew/bin/brew
 
-# Homebrew をこの実行で入れた場合、親シェルにはまだ PATH が通っていない。
-# 最後に案内するコマンドへ PATH の読み込みを前置するために覚えておく。
-homebrew_needs_activation=0
-
 # "<tool> version X.Y.Z (...)" の形式で名乗るツールからバージョンだけ取り出す。
 tool_version() {
   "$1" --version 2>/dev/null | head -1 | awk '{print $3}'
@@ -37,6 +33,12 @@ activate_homebrew() {
 }
 
 ensure_homebrew() {
+  # /etc/paths に /opt/homebrew/bin は入らないので、導入済みでも PATH に無いことがある。
+  # 気づかずインストーラへ進むと、再ダウンロードと sudo 要求が無駄に走る。
+  if ! command -v brew >/dev/null 2>&1 && [ -x "$HOMEBREW_BIN" ]; then
+    activate_homebrew
+  fi
+
   if ! command -v brew >/dev/null 2>&1; then
     # sudo を求めるので隠せない。境界だけ示して生ログを流す。
     #
@@ -50,7 +52,6 @@ ensure_homebrew() {
     ui_external_end
 
     activate_homebrew
-    homebrew_needs_activation=1
   fi
 
   ui_status ok 'Homebrew' "$(brew --version 2>/dev/null | head -1 | awk '{print $2}')"
@@ -172,23 +173,12 @@ ensure_git_identity() {
 }
 
 print_next_steps() {
-  local next_command='mise run setup'
-
   ui_ready 'リポを編集して push できます'
   ui_section 'Next Action'
-
-  # Homebrew をこの実行で入れた場合、親シェルには PATH が通っていない。
-  # 画面に出すコマンドとクリップボードの中身は必ず一致させる。
-  if [ "$homebrew_needs_activation" = 1 ]; then
-    local activate_command="eval \"\$($HOMEBREW_BIN shellenv)\""
-    ui_next_step "$activate_command" 'Homebrew の PATH をこの端末に通す'
-    next_command="$activate_command && mise run setup"
-  fi
-
   ui_next_step 'mise run setup' 'リポジトリが管理するツールを揃える'
   ui_next_step 'claude login' 'Claude Code の認証(未認証なら)'
   printf '\n'
-  ui_clipboard "$next_command"
+  ui_clipboard 'mise run setup'
   printf '\n'
 }
 
