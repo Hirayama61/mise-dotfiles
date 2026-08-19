@@ -2,10 +2,14 @@
 #
 # bootstrap(bin/bootstrap.sh)は mise が無い状態から走るのでここには載らない。
 # ここに載るのは mise が使えるようになった後のタスクだけ。
-#
-# [tools] はまだ空。fish は mise の registry に無く aqua backend 経由になるため、
-# Homebrew と比べてから決める。
+
+[tools]
+deno = "2"
 
 [tasks.setup]
 description = "リポジトリが管理するツールを揃える"
 run = "mise install"
+
+[tasks.test]
+description = "bootstrap のテストを実行する"
+run = "deno task check"
