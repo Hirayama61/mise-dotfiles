@@ -4,7 +4,9 @@ mise をベースとした macOS 向けの dotfiles。
 
 ## セットアップ
 
-リポジトリを ghq 配下に clone し、セットアップ用のコマンドをクリップボードへ入れる。
+リポジトリを ghq 配下へ clone する。
+既にあれば最新へ更新する。
+あわせてセットアップ用のコマンドをクリップボードへ入れる。
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/install.sh | bash
@@ -81,7 +83,7 @@ PR を作る前の初回 push では PR がまだ無いため、最初の 1 回�
 
 ```text
 mise-dotfiles/
-├── install.sh          curl の入口。clone するだけ
+├── install.sh          curl の入口。clone と更新だけ
 ├── bin/
 │   ├── bootstrap.sh    commit / push できる状態まで
 │   └── lib/

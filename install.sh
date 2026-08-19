@@ -24,10 +24,12 @@ dest="$ghq_root/github.com/$REPO_SLUG"
 if [ -d "$dest/.git" ]; then
   # fetch だけでは作業ツリーが古いままになり、この直後に source する bin/lib と
   # Next Action で案内する bootstrap.sh が最新にならない。
-  if git -C "$dest" pull --ff-only --quiet 2>/dev/null; then
+  # 失敗の理由はローカルの変更に限らず、通信・認証・upstream 未設定でも起きる。
+  # 原因を決めつけず、git のエラーをそのまま見せる。
+  if git -C "$dest" pull --ff-only --quiet; then
     clone_detail="既にありました(最新に更新)"
   else
-    clone_detail="既にありました(更新できず。ローカルの変更を確認)"
+    clone_detail="既にありました(更新できず。上のエラーを確認)"
   fi
 else
   git clone --quiet "https://github.com/$REPO_SLUG.git" "$dest"
