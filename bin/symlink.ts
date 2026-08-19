@@ -1,4 +1,4 @@
-import { lstatSync, mkdirSync, readlinkSync, symlinkSync, unlinkSync } from "node:fs";
+import { lstatSync, mkdirSync, readlinkSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -11,13 +11,16 @@ const links = [{ repo: "claude/rules", home: ".claude/rules" }] as const;
  * lstat の結果を返す。
  *
  * @param path - 調べるパス。
- * @returns lstat の結果。パスが存在しなければ null。
+ * @returns lstat の結果。パスが存在しなければ null。存在以外の失敗は再送出する。
  */
 const lstatOrNull = (path: string) => {
   try {
     return lstatSync(path);
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
   }
 };
 
@@ -42,14 +45,17 @@ const link = ({ repo, home }: (typeof links)[number]): boolean => {
       console.log(`確認: ~/${home}`);
       return true;
     }
-    unlinkSync(homePath);
   } else if (homeStat !== null) {
     console.error(`退避が必要: ~/${home} は symlink でないため上書きしない`);
     return false;
   }
 
+  // 既存 symlink の置き換え中に失敗しても壊れないよう、一時リンク経由で原子的に置き換える。
   mkdirSync(dirname(homePath), { recursive: true });
-  symlinkSync(repoPath, homePath);
+  const stagingPath = `${homePath}.staging`;
+  rmSync(stagingPath, { force: true });
+  symlinkSync(repoPath, stagingPath);
+  renameSync(stagingPath, homePath);
   console.log(`作成: ~/${home} -> ${repo}`);
   return true;
 };
