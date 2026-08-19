@@ -19,6 +19,10 @@ Apple Silicon macOS 用の dotfiles。
 | `mise run setup`   | このリポジトリで管理している設定を PC に適用する                                                                                                                      |
 | `mise run check`   | TypeScript と Markdown を format / lint で検証する                                                                                                                    |
 
+## Issue 起案
+
+作業中に摩擦や課題を見つけたら、`/create-issue` の実行を提案する。Issue を作れるのはこのスキルだけ。
+
 ## スクリプトの実装言語
 
 判断ロジックと UI は Bun/TypeScript で書く。  
