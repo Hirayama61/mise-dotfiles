@@ -86,9 +86,16 @@ mise-dotfiles/
 ├── install.sh          curl の入口。clone と更新だけ
 ├── bin/
 │   ├── bootstrap.sh    commit / push できる状態まで
+│   ├── symlink.ts      設定ファイルをホームディレクトリへ symlink する
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       └── ui.sh       バナー・状態表示・対話
+├── claude/
+│   └── rules/          Claude Code が全プロジェクトで読む規約群
+│       ├── japanese-writing.md  日本語の文章規範(常時)
+│       └── typescript.md        コーディング規約(.ts を触るときだけ)
+├── .claude/
+│   └── rules/          このリポジトリだけで読む規約群
 ├── docs/
 │   └── bun-llms.txt    Bun 公式ドキュメントの目次
 ├── package.json        検証ツールの依存とスクリプト
