@@ -1,0 +1,14 @@
+{
+  "name": "mise-dotfiles",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "oxfmt --check . && oxlint --no-error-on-unmatched-pattern"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxfmt": "0.64.0",
+    "oxlint": "^1.79.0",
+    "typescript": "^7.0.2"
+  }
+}

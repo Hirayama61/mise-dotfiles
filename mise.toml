@@ -3,9 +3,19 @@
 # bootstrap(bin/bootstrap.sh)は mise が無い状態から走るのでここには載らない。
 # ここに載るのは mise が使えるようになった後のタスクだけ。
 #
-# [tools] はまだ空。fish は mise の registry に無く aqua backend 経由になるため、
-# Homebrew と比べてから決める。
+# fish は mise の registry に無く aqua backend 経由になるため、Homebrew と比べてから決める。
+
+[tools]
+bun = "1"
 
 [tasks.setup]
 description = "リポジトリが管理するツールを揃える"
 run = "mise install"
+
+[tasks.check]
+description = "TypeScript を format / lint / type check で検証する"
+run = ["bun install --frozen-lockfile", "bun run check"]
+
+[tasks.docs]
+description = "Bun 公式ドキュメントの目次を取り直す"
+run = "curl -fsSL https://bun.com/llms.txt -o docs/bun-llms.txt"

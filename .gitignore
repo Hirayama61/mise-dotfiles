@@ -1,1 +1,8 @@
+# bun install
+node_modules
+
+# TypeScript
+*.tsbuildinfo
+
+# Finder (macOS)
 .DS_Store

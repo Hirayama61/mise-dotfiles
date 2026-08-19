@@ -17,6 +17,16 @@ Apple Silicon macOS 用の dotfiles。
 | `install.sh` | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone する |
 | `bin/bootstrap.sh` | このリポジトリに対して commit / push できる状態にする。このリポジトリに変更を加えるのはプライベート端末のみのため、git 周りの設定を `mise run setup` から分離している |
 | `mise run setup` | このリポジトリで管理している設定を PC に適用する |
+| `mise run check` | TypeScript を format / lint / type check で検証する |
+
+## スクリプトの実装言語
+
+判断ロジックと UI は Bun/TypeScript で書く。  
+Shell に残すのは、Bun が使えるようになる前に走る処理だけ。
+
+`bin/` 配下の TypeScript は npm パッケージに依存させない。  
+初期端末では `bun install` より前に走るため。  
+`package.json` の依存は検証ツール(`devDependencies`)だけに閉じる。
 
 ## 配色
 

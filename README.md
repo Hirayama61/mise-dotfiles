@@ -48,6 +48,19 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 2. Enter を押す(ブラウザの起動には失敗するが認証は続く)
 3. 接続元のブラウザで <https://github.com/login/device> を開きコードを入力する
 
+## 開発
+
+スクリプトの検証には Bun を使う。
+`mise run setup` で Bun が入る。
+
+```sh
+mise run check
+```
+
+Bun 公式ドキュメントの目次を `docs/bun-llms.txt` に置いている。
+各ページは `.md` 付きの URL で個別に取得できる。
+目次が古くなったら `mise run docs` で取り直す。
+
 ## 構成
 
 ```text
@@ -58,6 +71,10 @@ mise-dotfiles/
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       └── ui.sh       バナー・状態表示・対話
+├── docs/
+│   └── bun-llms.txt    Bun 公式ドキュメントの目次
+├── package.json        検証ツールの依存とスクリプト
+├── tsconfig.json       TypeScript の設定
 └── mise.toml           全タスクの入口
 ```
 
