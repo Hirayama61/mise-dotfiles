@@ -59,11 +59,13 @@ const link = ({ repo, home }: (typeof links)[number]): boolean => {
  *
  * 対応表の全件を適用し、作成できなかった項目があれば終了コード 1 で終える。
  */
-const main = (): void => {
+const runLink = (): void => {
   const blocked = links.filter((entry) => !link(entry)).length;
   if (blocked > 0) {
     process.exit(1);
   }
 };
 
-main();
+if (import.meta.main) {
+  runLink();
+}
