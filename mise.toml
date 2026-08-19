@@ -10,7 +10,7 @@ bun = "1"
 
 [tasks.setup]
 description = "リポジトリが管理するツールを揃える"
-run = ["mise install", "git config core.hooksPath .githooks"]
+run = "mise install"
 
 [tasks.check]
 description = "TypeScript と Markdown を format / lint で検証する"

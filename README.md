@@ -54,7 +54,7 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 ## 開発
 
 スクリプトと文書の検証には Bun を使う。
-`mise run setup` で Bun が入り、あわせて `core.hooksPath` が `.githooks` に向く。
+`mise run setup` で Bun が入る。
 
 ```sh
 mise run check
@@ -76,8 +76,8 @@ Bun 公式ドキュメントの目次を `docs/bun-llms.txt` に置いている�
 ### CodeRabbit のレビュー依頼
 
 star が 10 未満の public リポジトリは CodeRabbit の自動レビュー対象外で、PR へ明示的に依頼しないとレビューが走らない。
-`.githooks/pre-push` が、push 先のブランチに開いている PR があれば `@coderabbitai review` を投稿する。
-PR を作る前の初回 push では PR がまだ無いため、最初の 1 回だけ手で依頼する。
+PR 画面のチェックボックスか、`@coderabbitai full review` のコメントで依頼する。
+`@coderabbitai review` は差分レビュー用で、自動レビューを pause した PR でしか効かない。
 
 ## 構成
 
@@ -89,8 +89,6 @@ mise-dotfiles/
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       └── ui.sh       バナー・状態表示・対話
-├── .githooks/
-│   └── pre-push        CodeRabbit へレビューを依頼する
 ├── docs/
 │   └── bun-llms.txt    Bun 公式ドキュメントの目次
 ├── package.json        検証ツールの依存とスクリプト
