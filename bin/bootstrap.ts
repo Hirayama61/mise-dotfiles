@@ -32,7 +32,7 @@ async function ensureRepoTools(): Promise<void> {
   const missing = missingTools(tools, available);
   if (missing.length > 0) {
     await ui.run('mise', `${missing.join(' ')} を導入しています`, async () => {
-      await runner.inherit('mise', ['use', '--global', ...missing]);
+      await runner.checked('mise', ['use', '--global', ...missing]);
     });
   }
 
