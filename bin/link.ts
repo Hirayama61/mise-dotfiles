@@ -9,7 +9,12 @@ const repoRoot = resolve(import.meta.dir, "..");
 // repo: リポジトリ内の作成元 / home: ホームディレクトリ配下の配置先
 const links = [{ repo: "claude/rules", home: ".claude/rules" }] as const;
 
-/** path を lstat した結果を返す。存在しなければ null。 */
+/**
+ * lstat の結果を返す。
+ *
+ * @param path - 調べるパス。
+ * @returns lstat の結果。パスが存在しなければ null。
+ */
 const lstatOrNull = (path: string) => {
   try {
     return lstatSync(path);
@@ -19,10 +24,12 @@ const lstatOrNull = (path: string) => {
 };
 
 /**
- * 1 件の symlink を作成し、成否を返す。
- * 配置先に symlink でない実体がある場合は、壊さず警告して false を返す。
+ * 1 件の symlink を作成する。
+ *
+ * @param entry - 対応表の 1 項目。
+ * @returns 作成または確認できたら true。配置先に symlink でない実体がある場合は、壊さず警告して false。
  */
-const link = ({ repo, home }: { repo: string; home: string }): boolean => {
+const link = ({ repo, home }: (typeof links)[number]): boolean => {
   const repoPath = join(repoRoot, repo);
   const homePath = join(homedir(), home);
 
