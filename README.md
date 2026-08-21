@@ -4,20 +4,20 @@ mise をベースとした macOS 向けの dotfiles。
 
 ## セットアップ
 
-リポジトリを ghq 配下へ clone する。
-既にあれば最新へ更新する。
-あわせてセットアップ用のコマンドをクリップボードへ入れる。
+リポジトリを ghq 配下へ clone し、土台ツール(Homebrew・mise・Bun)を導入する。
+最後に Git 設定へ進むかを尋ね、次に実行するコマンドを表示してクリップボードへ入れる。
+`curl | bash` の形にしないのは、stdin がスクリプト本文になり Homebrew インストーラの対話と衝突するため。
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/install.sh | bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/install.sh)"
 ```
 
-ツールを導入し、Git 周りを設定する。
-clone 先は ghq の設定に従うため、実際のパスは install.sh が表示してクリップボードへ入れる。
-末尾の `eval` は、Homebrew を新しく入れた場合に PATH をこの端末へ通す。
+Git 設定(任意)。gh の認証と git identity を設定し、commit / push できる状態にする。
+この端末から commit しないなら飛ばしてよい。
+入れたばかりの端末では mise が PATH に無いため、install.sh がクリップボードへ入れる `cd` と `eval` 付きのコマンドをそのまま使う。
 
 ```sh
-cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh && eval "$(/opt/homebrew/bin/brew shellenv)"
+mise run git-setup
 ```
 
 このリポジトリで管理しているツールの導入や設定を適用する。
@@ -26,22 +26,31 @@ cd ~/ghq/github.com/Hirayama61/mise-dotfiles && ./bin/bootstrap.sh && eval "$(/o
 mise run setup
 ```
 
-## bootstrap.sh が行うこと
+## install.sh が行うこと
 
-ツールをインストールし、Git 周りを設定する。  
-`user.name` と `user.email` のどちらかが欠けている時だけ対話に入り、GitHub アカウントから候補を出す。
+リポジトリを取得し、土台ツールを導入する。
+既にあれば最新へ更新する。
 
-| ツール                        | インストール済みの場合         |
-| ----------------------------- | ------------------------------ |
-| Xcode Command Line Tools      | 案内して終了(自動では入れない) |
-| Homebrew                      | 何もしない                     |
-| mise                          | 何もしない                     |
-| ghq / gh                      | 足りないものだけ入れる         |
-| GitHub 認証                   | 何もしない                     |
-| git の user.name / user.email | 両方揃っていれば何もしない     |
+| ツール                   | インストール済みの場合         |
+| ------------------------ | ------------------------------ |
+| Xcode Command Line Tools | 案内して終了(自動では入れない) |
+| Homebrew                 | 何もしない                     |
+| mise                     | 何もしない                     |
+| Bun                      | 何もしない                     |
 
 Homebrew を新しく入れる場合は sudo のパスワードを求められる。
 `sudo -v` は NOPASSWD が設定されていてもパスワードを要求するため、どちらの端末でも 1 度は入力が要る。
+
+## mise run git-setup が行うこと
+
+Git 周りを設定する。
+`user.name` と `user.email` のどちらかが欠けている時だけ対話に入り、GitHub アカウントから候補を出す。
+
+| 対象                          | 設定済みの場合             |
+| ----------------------------- | -------------------------- |
+| ghq / gh                      | 足りないものだけ入れる     |
+| GitHub 認証                   | 何もしない                 |
+| git の user.name / user.email | 両方揃っていれば何もしない |
 
 ### SSH 越しにセットアップする場合
 
@@ -87,13 +96,15 @@ PR 画面のチェックボックスか、`@coderabbitai full review` のコメ�
 
 ```text
 mise-dotfiles/
-├── install.sh          curl の入口。clone と更新だけ
+├── install.sh          curl の入口。clone と Homebrew・mise・Bun の導入
 ├── bin/
-│   ├── bootstrap.sh    commit / push できる状態まで
+│   ├── git-setup.ts    commit / push できる状態にする任意タスク
 │   ├── symlink.ts      設定ファイルをホームディレクトリへ symlink する
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
-│       └── ui.sh       バナー・状態表示・対話
+│       ├── palette.ts  palette.sh を TypeScript から読み込む
+│       ├── ui.sh       install.sh の表示部品
+│       └── ui.ts       TypeScript タスクの表示と対話部品
 ├── claude/
 │   └── rules/          Claude Code が全プロジェクトで読む規約群
 │       ├── japanese-writing.md  日本語の文章規範(常時)
