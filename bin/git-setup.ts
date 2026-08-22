@@ -31,44 +31,27 @@ const capture = (command: readonly string[]): string | null => {
 const toolVersion = (tool: string): string => parseToolVersion(capture([tool, "--version"]));
 
 /**
- * ghq と gh を揃える。リポの取得と認証に必要なため、mise run setup を待たずここで入れる。
+ * gh を揃える。認証に使うので、この端末から commit / push する時だけ要る。
  *
  * mise use で入れたツールは、このプロセスの PATH には現れない。
- * Bun は起動時の PATH で実行ファイルを解決するので、mise に絶対パスを聞いて持ち回る。
+ * Bun は起動時の PATH で実行ファイルを解決するので、mise に絶対パスを聞く。
  *
  * @param ui - 表示部品。
  * @returns gh の実行パス。
  */
-const ensureRepoTools = async (ui: Ui): Promise<string> => {
-  const missing = ["ghq", "gh"].filter((tool) => Bun.which(tool) === null);
-
-  if (missing.length > 0) {
-    await ui.run("mise", `${missing.join(" ")} を導入しています`, [
-      "mise",
-      "use",
-      "--global",
-      ...missing,
-    ]);
+const ensureGh = async (ui: Ui): Promise<string> => {
+  if (Bun.which("gh") === null) {
+    await ui.run("mise", "gh を導入しています", ["mise", "use", "--global", "gh"]);
   }
 
-  const locate = (tool: string): string => {
-    const path = Bun.which(tool) ?? capture(["mise", "which", tool]);
-    if (path === null) {
-      throw new Error(`${tool} を導入できなかった`);
-    }
-    return path;
-  };
+  const path = Bun.which("gh") ?? capture(["mise", "which", "gh"]);
+  if (path === null) {
+    throw new Error("gh を導入できなかった");
+  }
 
-  const show = (tool: string, path: string): void => {
-    const version = toolVersion(path);
-    ui.status("ok", tool, version === "" ? "不明" : version);
-  };
-
-  const ghqPath = locate("ghq");
-  const ghPath = locate("gh");
-  show("ghq", ghqPath);
-  show("gh", ghPath);
-  return ghPath;
+  const version = toolVersion(path);
+  ui.status("ok", "gh", version === "" ? "不明" : version);
+  return path;
 };
 
 const ensureGithubAuth = (ui: Ui, ghPath: string): void => {
@@ -200,7 +183,7 @@ const runGitSetup = async (): Promise<void> => {
   ui.banner("commit / push できる状態まで");
 
   ui.section("ツール");
-  const ghPath = await ensureRepoTools(ui);
+  const ghPath = await ensureGh(ui);
 
   ui.section("GitHub");
   ensureGithubAuth(ui, ghPath);

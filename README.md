@@ -6,7 +6,6 @@ mise をベースとした macOS 向けの dotfiles。
 
 リポジトリを ghq 配下へ clone し、土台ツール(Homebrew・mise・Bun)を導入する。
 最後に Git 設定へ進むかを尋ね、次に実行するコマンドを表示してクリップボードへ入れる。
-`curl | bash` の形にしないのは、stdin がスクリプト本文になり Homebrew インストーラの対話と衝突するため。
 
 ```sh
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/install.sh)"
@@ -39,7 +38,6 @@ mise run setup
 | Bun                      | 何もしない                     |
 
 Homebrew を新しく入れる場合は sudo のパスワードを求められる。
-`sudo -v` は NOPASSWD が設定されていてもパスワードを要求するため、どちらの端末でも 1 度は入力が要る。
 
 ## mise run git-setup が行うこと
 
@@ -48,7 +46,7 @@ Git 周りを設定する。
 
 | 対象                          | 設定済みの場合             |
 | ----------------------------- | -------------------------- |
-| ghq / gh                      | 足りないものだけ入れる     |
+| gh                            | 何もしない                 |
 | GitHub 認証                   | 何もしない                 |
 | git の user.name / user.email | 両方揃っていれば何もしない |
 

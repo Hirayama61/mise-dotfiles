@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # curl で実行する入口。リポジトリの取得と、土台ツール(Homebrew・mise・Bun)の導入を行う。
 # Git 設定(gh 認証・git identity)は任意タスクの mise run git-setup が担当する。
+#
+# curl | bash では起動できない。stdin がスクリプト本文になり、Homebrew インストーラの
+# Enter 確認とこのスクリプトの ui_confirm がそれを読んでしまう。
 set -euo pipefail
 
 REPO_SLUG="Hirayama61/mise-dotfiles"
