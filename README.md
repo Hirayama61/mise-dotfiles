@@ -58,6 +58,21 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 2. Enter を押す(ブラウザの起動には失敗するが認証は続く)
 3. 接続元のブラウザで <https://github.com/login/device> を開きコードを入力する
 
+## mise run setup が行うこと
+
+`mise.toml` の `[tools]` にあるツールを入れ、設定ファイルをホームディレクトリへ symlink する。
+何度実行しても同じ結果になる。
+
+| 対象               | 内容                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| Bun / node         | `mise install` で入れる                                                                          |
+| agent-browser      | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                               |
+| Chrome for Testing | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない |
+| `~/.claude/rules`  | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                          |
+
+`agent-browser` は `/create-issue` が ChatGPT の共有チャットを読むために使う。
+共有ページの本文はクライアント側で描画されるため、HTML を取るだけでは読めない。
+
 ## 開発
 
 スクリプトと文書の検証には Bun を使う。
@@ -108,12 +123,14 @@ mise-dotfiles/
 │       ├── japanese-writing.md  日本語の文章規範(常時)
 │       └── typescript.md        コーディング規約(.ts を触るときだけ)
 ├── .claude/
-│   └── rules/          このリポジトリだけで読む規約群
+│   ├── rules/          このリポジトリだけで読む規約群
+│   └── skills/         このリポジトリだけで使うスキル群
+│       └── create-issue/  Issue 起案の手順
 ├── docs/
 │   └── bun-llms.txt    Bun 公式ドキュメントの目次
 ├── package.json        検証ツールの依存とスクリプト
 ├── tsconfig.json       TypeScript の設定
-└── mise.toml           全タスクの入口
+└── mise.toml           全タスクの入口と、管理するツールの一覧
 ```
 
 ## ライセンス

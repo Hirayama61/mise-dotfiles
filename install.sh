@@ -92,10 +92,11 @@ ensure_mise() {
 }
 
 ensure_bun() {
-  # mise.toml の [tools] に従って Bun を入れる。導入済みなら mise install は何もしない。
+  # mise.toml の [tools] から Bun だけを入れる。残りのツールは mise run setup が入れる。
+  # 導入済みなら mise install は何もしない。
   # 初回はこのリポジトリの mise.toml が未信頼で確認が入るため、先に trust しておく。
   mise trust "$dest/mise.toml" >/dev/null 2>&1 || true
-  ui_run 'Bun' '導入しています' mise -C "$dest" install
+  ui_run 'Bun' '導入しています' mise -C "$dest" install bun
   ui_status ok 'Bun' "$(mise -C "$dest" exec -- bun --version 2>/dev/null)"
 }
 

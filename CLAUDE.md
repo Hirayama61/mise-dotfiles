@@ -16,7 +16,7 @@ Apple Silicon macOS 用の dotfiles。
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `install.sh`         | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone し、土台ツール(Homebrew・mise・Bun)を導入する                                               |
 | `mise run git-setup` | このリポジトリに対して commit / push できる状態にする。commit するのはプライベート端末だけのため任意タスクとし、実行しなくても `mise run setup` へ進める |
-| `mise run setup`     | このリポジトリで管理している設定を PC に適用する                                                                                                         |
+| `mise run setup`     | このリポジトリで管理しているツールと設定を PC に適用する                                                                                                 |
 | `mise run check`     | TypeScript と Markdown を format / lint / type check で検証する                                                                                          |
 
 ## Issue 起案
@@ -36,3 +36,8 @@ Shell へ残すのは、Bun を用意するまでに走る処理だけ。
 
 `bin/lib/palette.sh` が Panda 配色の単一ソース。  
 このリポジトリで管理している全てのツールの配色はこのテーマで統一すること。
+
+## ブラウザツール
+
+`agent-browser` は AI が Web ページを調査するためのブラウザ。`mise run setup` で導入する。
+動作確認や E2E に使うブラウザ(Playwright)は各リポジトリの `devDependencies` に置き、ここでは管理しない。

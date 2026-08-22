@@ -7,10 +7,15 @@
 
 [tools]
 bun = "1"
+# agent-browser は AI が Web ページを調査するためのブラウザ CLI。
+# npm backend の導入には node が要らないが、実行には要るので node もここで管理する。
+node = "lts"
+"npm:agent-browser" = "0.34"
 
 [tasks.setup]
 description = "リポジトリが管理するツールと設定を PC に適用する"
-run = ["mise install", "bun bin/symlink.ts"]
+# agent-browser install は Chrome for Testing を ~/.agent-browser/browsers へ置く。導入済みなら何もしない。
+run = ["mise install", "agent-browser install", "bun bin/symlink.ts"]
 
 [tasks.git-setup]
 description = "このリポジトリに commit / push できる状態にする(任意)"
