@@ -18,7 +18,6 @@ DISCOVER → FRAME → GRILL → DRAFT → CREATE の順に進める。
 
 引数は自由文。依頼の要約や、作業中に見つけた摩擦を受け取る。
 引数に ChatGPT の共有チャットの URL(`https://chatgpt.com/share/...`)が含まれていたら、本文を読み取って DISCOVER の入力に加える。
-URL を含まない起動は、これまでと同じ手順で進める。
 
 ### 共有チャットの読み取り
 
