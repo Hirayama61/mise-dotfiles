@@ -1,6 +1,6 @@
 # 全タスクの入口。
 #
-# bootstrap(bin/bootstrap.sh)は mise が無い状態から走るのでここには載らない。
+# install.sh は mise が無い状態から走るのでここには載らない。
 # ここに載るのは mise が使えるようになった後のタスクだけ。
 #
 # fish は mise の registry に無く aqua backend 経由になるため、Homebrew と比べてから決める。
@@ -11,6 +11,10 @@ bun = "1"
 [tasks.setup]
 description = "リポジトリが管理するツールと設定を PC に適用する"
 run = ["mise install", "bun bin/symlink.ts"]
+
+[tasks.git-setup]
+description = "このリポジトリに commit / push できる状態にする(任意)"
+run = "bun bin/git-setup.ts"
 
 [tasks.check]
 description = "TypeScript と Markdown を format / lint / type check で検証する"

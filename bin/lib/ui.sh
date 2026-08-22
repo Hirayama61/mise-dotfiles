@@ -1,6 +1,7 @@
 # shellcheck shell=bash
-# install.sh / bootstrap.sh の表示部品。
+# install.sh の表示部品。
 # palette.sh を先に読み込んでおくこと。
+# git-setup(TypeScript)側の表示と対話は bin/lib/ui.ts が担当する。
 #
 # 端末以外へ出力する時と NO_COLOR 指定時はエスケープを出さない。
 # ログやパイプに制御文字が混ざると読めなくなるため。
@@ -94,12 +95,10 @@ ui_section() {
 }
 
 # $1 は ok(揃っている) / kept(既存があるので触らなかった)
-#
-# ラベル幅はインデントの深さと足して揃えてあり、親子で detail の開始列が一致する。
-ui_status_line() {
-  local indent=$1 label_width=$2 state=$3 label=$4 detail=$5
+ui_status() {
+  local state=$1 label=$2 detail=$3
 
-  printf '%s' "$indent"
+  printf '   '
 
   case "$state" in
   ok)
@@ -113,20 +112,11 @@ ui_status_line() {
   esac
 
   ui_color "$PANDA_FG"
-  printf "%-${label_width}s" "$label"
+  printf '%-14s' "$label"
   ui_color "$PANDA_GRAY_LIFT"
   printf '%s\n' "$detail"
   ui_reset
   ui_pause_line
-}
-
-ui_status() {
-  ui_status_line '   ' 14 "$@"
-}
-
-# 直前の行にぶら下げる。mise が入れたツールのような内訳を出す時に使う。
-ui_status_child() {
-  ui_status_line '     ' 12 "$@"
 }
 
 ui_note() {
@@ -232,30 +222,6 @@ ui_next_step() {
   printf '%*s%s\n' "$padding" '' "$description"
   ui_reset
   ui_pause_line
-}
-
-# 戻り値を $() で受ける前提なので、プロンプトは stderr へ出す。
-# stdout に出すとプロンプトごとキャプチャされ、画面に何も出ないまま入力待ちになり、
-# 入力値に ANSI エスケープが混入する。
-#
-# $() の中で読むと Enter のエコーが画面に届かず、次のプロンプトが同じ行に続く。
-# 端末のエコーに頼らず自分で改行する。
-ui_ask() {
-  local label=$1 default=$2 answer
-
-  {
-    ui_color "$PANDA_FG"
-    printf '   %-8s' "$label"
-    ui_color "$PANDA_SUBTLE"
-    printf '[%s] ' "$default"
-    ui_color "$PANDA_CYAN"
-    printf '> '
-    ui_reset
-  } >&2
-
-  read -r answer
-  printf '\n' >&2
-  printf '%s' "${answer:-$default}"
 }
 
 ui_confirm() {
