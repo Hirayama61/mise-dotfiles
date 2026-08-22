@@ -24,12 +24,13 @@ URL を含まない起動は、これまでと同じ手順で進める。
 
 共有ページの本文はクライアント側で描画されるため、`WebFetch` では取れない。
 `mise run setup` が入れる `agent-browser` で開き、描画後の DOM から読む。
+mise を activate していない shell では PATH に無いため、`mise exec` 経由で呼ぶ。
 
 ```sh
-agent-browser open "<URL>"
-agent-browser wait "[data-message-author-role]"
-agent-browser get text main
-agent-browser close
+mise exec -- agent-browser open "<URL>"
+mise exec -- agent-browser wait "[data-message-author-role]"
+mise exec -- agent-browser get text main
+mise exec -- agent-browser close
 ```
 
 取得できなかったら起案を止めない。
