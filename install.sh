@@ -55,7 +55,8 @@ activate_homebrew() {
 }
 
 ensure_homebrew() {
-  # /etc/paths に /opt/homebrew/bin は入らないので、導入済みでも PATH に無いことがある。
+  # インストーラが作る /etc/paths.d/homebrew は新しいシェルにしか効かない。
+  # 導入済みの端末から起動されたこのプロセスでは PATH に無いことがある。
   # 気づかずインストーラへ進むと、再ダウンロードと sudo 要求が無駄に走る。
   if ! command -v brew >/dev/null 2>&1 && [ -x "$HOMEBREW_BIN" ]; then
     activate_homebrew

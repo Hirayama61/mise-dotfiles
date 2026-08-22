@@ -1,5 +1,3 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { createUi, type Ui } from "./lib/ui.ts";
 
 /**
@@ -32,8 +30,16 @@ const capture = (command: readonly string[]): string | null => {
 
 const toolVersion = (tool: string): string => parseToolVersion(capture([tool, "--version"]));
 
-// ghq と gh はリポの取得と認証に必要なため、mise run setup ではなくこのタイミングで入れる。
-const ensureRepoTools = async (ui: Ui): Promise<void> => {
+/**
+ * ghq と gh を揃える。リポの取得と認証に必要なため、mise run setup を待たずここで入れる。
+ *
+ * mise use で入れたツールは、このプロセスの PATH には現れない。
+ * Bun は起動時の PATH で実行ファイルを解決するので、mise に絶対パスを聞いて持ち回る。
+ *
+ * @param ui - 表示部品。
+ * @returns gh の実行パス。
+ */
+const ensureRepoTools = async (ui: Ui): Promise<string> => {
   const missing = ["ghq", "gh"].filter((tool) => Bun.which(tool) === null);
 
   if (missing.length > 0) {
@@ -43,17 +49,30 @@ const ensureRepoTools = async (ui: Ui): Promise<void> => {
       "--global",
       ...missing,
     ]);
-    // mise use は shim を作るだけで、このプロセスの PATH には現れない。自分で通す。
-    const shims = join(process.env.MISE_DATA_DIR ?? join(homedir(), ".local/share/mise"), "shims");
-    process.env.PATH = `${shims}:${process.env.PATH ?? ""}`;
   }
 
-  ui.status("ok", "ghq", toolVersion("ghq"));
-  ui.status("ok", "gh", toolVersion("gh"));
+  const locate = (tool: string): string => {
+    const path = Bun.which(tool) ?? capture(["mise", "which", tool]);
+    if (path === null) {
+      throw new Error(`${tool} を導入できなかった`);
+    }
+    return path;
+  };
+
+  const show = (tool: string, path: string): void => {
+    const version = toolVersion(path);
+    ui.status("ok", tool, version === "" ? "不明" : version);
+  };
+
+  const ghqPath = locate("ghq");
+  const ghPath = locate("gh");
+  show("ghq", ghqPath);
+  show("gh", ghPath);
+  return ghPath;
 };
 
-const ensureGithubAuth = (ui: Ui): void => {
-  const authenticated = Bun.spawnSync(["gh", "auth", "status"], {
+const ensureGithubAuth = (ui: Ui, ghPath: string): void => {
+  const authenticated = Bun.spawnSync([ghPath, "auth", "status"], {
     stdout: "ignore",
     stderr: "ignore",
   }).success;
@@ -62,7 +81,7 @@ const ensureGithubAuth = (ui: Ui): void => {
     ui.note("GitHub の認証が必要です。ブラウザが開きます。");
     process.stdout.write("\n");
     const login = Bun.spawnSync(
-      ["gh", "auth", "login", "--hostname", "github.com", "--git-protocol", "https", "--web"],
+      [ghPath, "auth", "login", "--hostname", "github.com", "--git-protocol", "https", "--web"],
       { stdin: "inherit", stdout: "inherit", stderr: "inherit" },
     );
     if (!login.success) {
@@ -71,7 +90,7 @@ const ensureGithubAuth = (ui: Ui): void => {
     process.stdout.write("\n");
   }
 
-  ui.status("ok", "gh auth", capture(["gh", "api", "user", "--jq", ".login"]) ?? "認証済み");
+  ui.status("ok", "gh auth", capture([ghPath, "api", "user", "--jq", ".login"]) ?? "認証済み");
 };
 
 // 空入力を既定値で埋められない項目を、値が入るまで聞き直す。
@@ -103,7 +122,7 @@ const printGitconfigPreview = (ui: Ui, name: string, email: string): void => {
 //
 // commit には name と email の両方が要る。片方でも欠けていれば対話に入り、
 // 残っている方は既定値として提示するので Enter で維持できる。
-const ensureGitIdentity = async (ui: Ui): Promise<void> => {
+const ensureGitIdentity = async (ui: Ui, ghPath: string): Promise<void> => {
   const currentName = capture(["git", "config", "--get", "user.name"]);
   const currentEmail = capture(["git", "config", "--get", "user.email"]);
 
@@ -115,9 +134,9 @@ const ensureGitIdentity = async (ui: Ui): Promise<void> => {
     return;
   }
 
-  const login = capture(["gh", "api", "user", "--jq", ".login"]);
-  const userId = capture(["gh", "api", "user", "--jq", ".id"]);
-  const suggestedName = capture(["gh", "api", "user", "--jq", ".name // .login"]);
+  const login = capture([ghPath, "api", "user", "--jq", ".login"]);
+  const userId = capture([ghPath, "api", "user", "--jq", ".id"]);
+  const suggestedName = capture([ghPath, "api", "user", "--jq", ".name // .login"]);
 
   ui.note("commit に必要な identity が未設定です。");
   ui.note("Enter で [ ] 内の候補を採用します。変えるなら入力してください。");
@@ -181,13 +200,13 @@ const runGitSetup = async (): Promise<void> => {
   ui.banner("commit / push できる状態まで");
 
   ui.section("ツール");
-  await ensureRepoTools(ui);
+  const ghPath = await ensureRepoTools(ui);
 
   ui.section("GitHub");
-  ensureGithubAuth(ui);
+  ensureGithubAuth(ui, ghPath);
 
   ui.section("git identity");
-  await ensureGitIdentity(ui);
+  await ensureGitIdentity(ui, ghPath);
 
   printNextSteps(ui);
   ui.close();
