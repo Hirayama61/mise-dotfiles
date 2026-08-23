@@ -92,12 +92,18 @@ const askUntilAnswered = async (ui: Ui, label: string, defaultValue: string): Pr
 /**
  * git config --global が書き込むファイルを返す。
  *
+ * GIT_CONFIG_GLOBAL が在ると git は ~/.gitconfig も XDG 側も見ない(man git)。
  * ~/.gitconfig が無く XDG 側だけが在る端末では XDG 側へ書かれる(man git-config)。
  * XDG_CONFIG_HOME は未設定でも空でも ~/.config として扱う。
  *
- * @returns 書き先の絶対パス。
+ * @returns 書き先のパス。
  */
 const globalGitConfigPath = (): string => {
+  const override = process.env.GIT_CONFIG_GLOBAL;
+  if (override) {
+    return override;
+  }
+
   const gitconfig = join(homedir(), ".gitconfig");
   if (existsSync(gitconfig)) {
     return gitconfig;
