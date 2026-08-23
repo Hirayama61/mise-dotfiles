@@ -4,8 +4,9 @@ mise をベースとした macOS 向けの dotfiles。
 
 ## セットアップ
 
-リポジトリを ghq 配下へ clone し、土台ツール(Homebrew・mise・Bun)を導入する。
+リポジトリを ghq 配下へ clone し、mise を導入する。
 最後に Git 設定へ進むかを尋ね、次に実行するコマンドを表示してクリップボードへ入れる。
+Homebrew と sudo は要らない。
 
 ```sh
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Hirayama61/mise-dotfiles/main/install.sh)"
@@ -13,13 +14,14 @@ mise をベースとした macOS 向けの dotfiles。
 
 Git 設定(任意)。gh の認証と git identity を設定し、commit / push できる状態にする。
 この端末から commit しないなら飛ばしてよい。
-入れたばかりの端末では mise が PATH に無いため、install.sh がクリップボードへ入れる `cd` と `eval` 付きのコマンドをそのまま使う。
+入れたばかりの端末では `~/.local/bin` が PATH に無いため、install.sh は `~/.local/bin/mise run git-setup` の形で案内する。
 
 ```sh
 mise run git-setup
 ```
 
-このリポジトリで管理しているツールの導入や設定を適用する。
+このリポジトリで管理しているツールと設定を PC に適用する。
+実行後に開いた端末からは、パス無しの `mise` が使える。
 
 ```sh
 mise run setup
@@ -27,17 +29,16 @@ mise run setup
 
 ## install.sh が行うこと
 
-リポジトリを取得し、土台ツールを導入する。
+リポジトリを取得し、mise を導入する。
 既にあれば最新へ更新する。
 
 | ツール                   | インストール済みの場合         |
 | ------------------------ | ------------------------------ |
 | Xcode Command Line Tools | 案内して終了(自動では入れない) |
-| Homebrew                 | 何もしない                     |
 | mise                     | 何もしない                     |
-| Bun                      | 何もしない                     |
 
-Homebrew を新しく入れる場合は sudo のパスワードを求められる。
+mise は <https://mise.run> のインストーラで `~/.local/bin/mise` へ入る。
+Bun などの `[tools]` は `mise run` が足りない分を自動で入れるため、ここでは導入しない。
 
 ## mise run git-setup が行うこと
 
@@ -60,15 +61,21 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 
 ## mise run setup が行うこと
 
-`mise.toml` の `[tools]` にあるツールを入れ、設定ファイルをホームディレクトリへ symlink する。
-何度実行しても同じ結果になる。
+`mise bootstrap --yes` を実行し、`mise.toml` に宣言した状態へ PC を収束させる。
+既に望む状態にある項目は飛ばすので、何度実行しても同じ結果になり、2 度目からは sudo と対話が発生しない。
 
 | 対象               | 内容                                                                                             |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
-| Bun / node         | `mise install` で入れる                                                                          |
+| `~/.claude/rules`  | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                          |
+| `~/.zprofile`      | `~/.local/bin` を PATH へ通す行と、mise の shims を有効にする行                                  |
+| `~/.zshrc`         | mise を有効にする行                                                                              |
+| Bun / node         | `[tools]` から入れる                                                                             |
 | agent-browser      | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                               |
 | Chrome for Testing | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない |
-| `~/.claude/rules`  | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                          |
+
+shell の rc ファイルへの書き込みは `# >>> mise:... >>>` のマーカーで囲んだ行だけを mise が管理し、それ以外の行には触れない。
+Homebrew の formula が要るときは `[bootstrap.packages]` に `"brew:<formula>" = "latest"` と書く。
+mise が bottle を `/opt/homebrew` へ直接置くので Homebrew CLI は要らず、既に Homebrew がある端末ではその formula として共存する。
 
 `agent-browser` は `/create-issue` が ChatGPT の共有チャットを読むために使う。
 共有ページの本文はクライアント側で描画されるため、HTML を取るだけでは読めない。
@@ -76,7 +83,7 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 ## 開発
 
 スクリプトと文書の検証には Bun を使う。
-`mise run setup` で Bun が入る。
+無ければ `mise run` が入れる。
 
 ```sh
 mise run check
@@ -109,10 +116,9 @@ PR 画面のチェックボックスか、`@coderabbitai full review` のコメ�
 
 ```text
 mise-dotfiles/
-├── install.sh          curl の入口。clone と Homebrew・mise・Bun の導入
+├── install.sh          curl の入口。clone と mise の導入
 ├── bin/
 │   ├── git-setup.ts    commit / push できる状態にする任意タスク
-│   ├── symlink.ts      設定ファイルをホームディレクトリへ symlink する
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       ├── palette.ts  palette.sh を TypeScript から読み込む
@@ -130,7 +136,7 @@ mise-dotfiles/
 │   └── bun-llms.txt    Bun 公式ドキュメントの目次
 ├── package.json        検証ツールの依存とスクリプト
 ├── tsconfig.json       TypeScript の設定
-└── mise.toml           全タスクの入口と、管理するツールの一覧
+└── mise.toml           全タスクの入口と、mise bootstrap が PC に収束させる状態
 ```
 
 ## ライセンス
