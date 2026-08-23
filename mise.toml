@@ -1,4 +1,5 @@
-# 全タスクの入口と、mise bootstrap が PC に収束させる状態。
+# このリポジトリで管理するツール・設定の宣言と、全タスクの入口。
+# mise run setup(mise bootstrap)が宣言どおりに PC を揃え、済んでいる項目は飛ばす。
 #
 # install.sh は mise が無い状態から走るのでここには載らない。
 # ここに載るのは mise が使えるようになった後のタスクだけ。
@@ -12,7 +13,6 @@ node = "lts"
 
 # Homebrew の formula が要るときは "brew:<formula>" = "latest" をここに書く。
 # mise が bottle を /opt/homebrew へ直接置くので、Homebrew CLI は要らない。
-# fish(#9)もここへ書く候補。
 [bootstrap.packages]
 
 [dotfiles]
