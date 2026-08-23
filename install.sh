@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# curl で実行する入口。リポジトリの取得と、土台ツール(Homebrew・mise・Bun)の導入を行う。
-# Git 設定(gh 認証・git identity)は任意タスクの mise run git-setup が担当する。
+# curl で実行する入口。git の確認、リポジトリの取得・更新、mise の導入を行う。
+# ツールと設定の適用は mise run setup、Git 設定(gh 認証・git identity)は任意の
+# mise run git-setup が担当する。
 #
-# curl | bash では起動できない。stdin がスクリプト本文になり、Homebrew インストーラの
-# Enter 確認とこのスクリプトの ui_confirm がそれを読んでしまう。
+# curl | bash では起動できない。stdin がスクリプト本文になり、ui_confirm がそれを読んでしまう。
 set -euo pipefail
 
 REPO_SLUG="Hirayama61/mise-dotfiles"
-HOMEBREW_BIN=/opt/homebrew/bin/brew
+# https://mise.run の既定の配置先。素の macOS では PATH に無い。
+MISE_BIN="$HOME/.local/bin/mise"
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git が見つかりません。先に Xcode Command Line Tools を入れてください:" >&2
@@ -52,55 +53,33 @@ tool_version() {
   "$1" --version 2>/dev/null | head -1 | awk '{print $3}'
 }
 
-# インストーラは PATH を通さないので、この実行中に使えるよう自分で読み込む。
-activate_homebrew() {
-  eval "$("$HOMEBREW_BIN" shellenv)"
-}
-
-ensure_homebrew() {
-  # インストーラが作る /etc/paths.d/homebrew は新しいシェルにしか効かない。
-  # 導入済みの端末から起動されたこのプロセスでは PATH に無いことがある。
-  # 気づかずインストーラへ進むと、再ダウンロードと sudo 要求が無駄に走る。
-  if ! command -v brew >/dev/null 2>&1 && [ -x "$HOMEBREW_BIN" ]; then
-    activate_homebrew
-  fi
-
-  if ! command -v brew >/dev/null 2>&1; then
-    # sudo を求めるので隠せない。境界だけ示して生ログを流す。
-    #
-    # NONINTERACTIVE は付けない。付けると権限確認が sudo -n になり、パスワードを
-    # 要求する端末では abort する。代わりに確認の Enter 待ちを受け入れる。
-    # sudo -v は NOPASSWD が設定されていてもパスワードを求めるので、
-    # どちらの端末でも 1 度は入力が要る。
-    ui_external_begin 'Homebrew installer'
-    /bin/bash -c \
-      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    ui_external_end
-
-    activate_homebrew
-  fi
-
-  ui_status ok 'Homebrew' "$(brew --version 2>/dev/null | head -1 | awk '{print $2}')"
-}
-
 ensure_mise() {
+  # 導入済みの端末から起動されても、この子プロセスの PATH に ~/.local/bin は無いことがある。
+  # 気づかずインストーラへ進むと再ダウンロードが無駄に走る。
+  export PATH="$HOME/.local/bin:$PATH"
+
   if ! command -v mise >/dev/null 2>&1; then
-    ui_run 'mise' '導入しています' brew install --quiet mise
+    # インストーラは sudo も対話も求めず、~/.local/bin/mise を置くだけ。
+    ui_run 'mise' '導入しています' sh -c 'curl -fsSL https://mise.run | sh'
   fi
 
+  # 初回はこのリポジトリの mise.toml が未信頼で確認が入るため、先に trust しておく。
+  mise trust "$dest/mise.toml" >/dev/null 2>&1 || true
   ui_status ok 'mise' "$(mise --version 2>/dev/null | awk '{print $1}')"
 }
 
-ensure_bun() {
-  # mise.toml の [tools] から Bun だけを入れる。残りのツールは mise run setup が入れる。
-  # 導入済みなら mise install は何もしない。
-  # 初回はこのリポジトリの mise.toml が未信頼で確認が入るため、先に trust しておく。
-  mise trust "$dest/mise.toml" >/dev/null 2>&1 || true
-  ui_run 'Bun' '導入しています' mise -C "$dest" install bun
-  ui_status ok 'Bun' "$(mise -C "$dest" exec -- bun --version 2>/dev/null)"
+# 人間が端末で打つ mise のコマンド名。
+# 入れたばかりの端末では ~/.local/bin が PATH に無く、裸の mise は見つからない。
+# mise run setup が shell activation を書くまでは、パス付きで案内する。
+mise_command() {
+  if [ "$(command -v mise)" = "$MISE_BIN" ]; then
+    printf '~/.local/bin/mise'
+  else
+    printf 'mise'
+  fi
 }
 
-ui_banner 'リポジトリの取得と土台ツールの導入まで'
+ui_banner 'リポジトリの取得と mise の導入まで'
 
 ui_section 'リポジトリ'
 ui_status ok 'mise-dotfiles' "$clone_detail"
@@ -108,33 +87,25 @@ ui_status ok 'path' "$short_dest"
 
 ui_section 'ツール'
 ui_status ok 'git' "$(tool_version git)"
-ensure_homebrew
 ensure_mise
-ensure_bun
 
 ui_section 'Git 設定'
 ui_note 'gh の認証と git identity の設定は、この端末から commit / push する場合だけ必要です。'
 printf '\n'
 if ui_confirm 'Git 設定へ進みますか'; then
-  next_command='mise run git-setup'
+  next_command="$(mise_command) run git-setup"
   next_description='commit / push できる状態にする'
 else
-  next_command='mise run setup'
+  next_command="$(mise_command) run setup"
   next_description='リポジトリが管理するツールと設定を適用する'
   printf '\n'
-  ui_note 'Git 設定は後から mise run git-setup で実行できます。'
+  ui_note "Git 設定は後から $(mise_command) run git-setup で実行できます。"
 fi
-
-# このスクリプトは子プロセスなので、中で Homebrew を入れても親シェルの PATH は変わらない。
-# 人間が叩く 1 本のコマンドとして繋ぎ、呼び出し元の端末で eval を走らせる。
-# shellcheck disable=SC2016  # 人間の端末で評価させる文字列なので、ここでは展開しない
-homebrew_activation_command='eval "$(/opt/homebrew/bin/brew shellenv)"'
 
 ui_ready '土台が揃いました'
 ui_section 'Next Action'
 ui_next_step "cd $short_dest" ''
-ui_next_step "$homebrew_activation_command" 'Homebrew の PATH をこの端末に通す'
 ui_next_step "$next_command" "$next_description"
 printf '\n'
-ui_clipboard "cd $short_dest && $homebrew_activation_command && $next_command"
+ui_clipboard "cd $short_dest && $next_command"
 printf '\n'
