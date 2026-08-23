@@ -1,3 +1,7 @@
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 import { createUi, type Ui } from "./lib/ui.ts";
 
 /**
@@ -85,10 +89,44 @@ const askUntilAnswered = async (ui: Ui, label: string, defaultValue: string): Pr
   return answer;
 };
 
-const printGitconfigPreview = (ui: Ui, name: string, email: string): void => {
+/**
+ * git config --global が書き込むファイルを返す。
+ *
+ * GIT_CONFIG_GLOBAL が在ると git は ~/.gitconfig も XDG 側も見ない(man git)。
+ * ~/.gitconfig が無く XDG 側だけが在る端末では XDG 側へ書かれる(man git-config)。
+ * XDG_CONFIG_HOME は未設定でも空でも ~/.config として扱う。
+ *
+ * @returns 書き先のパス。
+ */
+const globalGitConfigPath = (): string => {
+  const override = process.env.GIT_CONFIG_GLOBAL;
+  if (override) {
+    return override;
+  }
+
+  const gitconfig = join(homedir(), ".gitconfig");
+  if (existsSync(gitconfig)) {
+    return gitconfig;
+  }
+
+  const xdgBase = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+  const xdgConfig = join(xdgBase, "git", "config");
+  return existsSync(xdgConfig) ? xdgConfig : gitconfig;
+};
+
+/**
+ * ホームディレクトリ配下のパスを ~ 始まりの表記へ縮める。
+ *
+ * @param path - 絶対パス。
+ * @returns ホーム配下なら ~ 始まりの表記。そうでなければそのまま。
+ */
+const shortenHome = (path: string): string =>
+  path.startsWith(`${homedir()}/`) ? `~${path.slice(homedir().length)}` : path;
+
+const printGitconfigPreview = (ui: Ui, name: string, email: string, target: string): void => {
   const lines = [
     "",
-    ui.paint("SUBTLE", "   ~/.gitconfig に書きます"),
+    ui.paint("SUBTLE", `   ${shortenHome(target)} に書きます`),
     "",
     ui.paint("SUBTLE", "     [user]"),
     ui.paint("SUBTLE", "         name  = ") + ui.paint("FG", name),
@@ -99,10 +137,6 @@ const printGitconfigPreview = (ui: Ui, name: string, email: string): void => {
   process.stdout.write(lines.join("\n"));
 };
 
-// git は ~/.gitconfig が存在すると ~/.config/git/config を読まなくなる。
-// ここで書く値は ~/.gitconfig に入るので、後から共有設定を include で足しても
-// include より後ろに残り、端末固有の値として勝ち続ける。
-//
 // commit には name と email の両方が要る。片方でも欠けていれば対話に入り、
 // 残っている方は既定値として提示するので Enter で維持できる。
 const ensureGitIdentity = async (ui: Ui, ghPath: string): Promise<void> => {
@@ -134,7 +168,7 @@ const ensureGitIdentity = async (ui: Ui, ghPath: string): Promise<void> => {
   const name = await askUntilAnswered(ui, "name", currentName ?? suggestedName ?? login ?? "");
   const email = await askUntilAnswered(ui, "email", currentEmail ?? noreply);
 
-  printGitconfigPreview(ui, name, email);
+  printGitconfigPreview(ui, name, email, globalGitConfigPath());
 
   if (!(await ui.confirm("この内容で書き込みますか"))) {
     process.stdout.write("\n");
