@@ -4,6 +4,9 @@ import { join } from "node:path";
 
 import { createUi, type Ui } from "./lib/ui.ts";
 
+// mise run のタスクには mise 自身の PATH が通らないので、mise.toml が絶対パスを渡す。
+const miseBin = process.env.MISE_BIN ?? "mise";
+
 /**
  * "<tool> version X.Y.Z (...)" の形式で名乗るツールの出力からバージョンだけ取り出す。
  *
@@ -12,6 +15,17 @@ import { createUi, type Ui } from "./lib/ui.ts";
  */
 const parseToolVersion = (output: string | null): string =>
   output?.split("\n")[0]?.split(/\s+/)[2] ?? "";
+
+/**
+ * 人間が端末で打つ mise のコマンド名を返す。
+ *
+ * 入れたばかりの端末では ~/.local/bin が PATH に無く、裸の mise は見つからない。
+ * mise がそこにあるときだけ、どの端末でも通るパス付きの表記にする。
+ *
+ * @returns "mise" か "~/.local/bin/mise"。
+ */
+const miseCommand = (): string =>
+  miseBin === join(homedir(), ".local/bin/mise") ? "~/.local/bin/mise" : "mise";
 
 /**
  * コマンドを実行して標準出力を返す。
@@ -45,10 +59,10 @@ const toolVersion = (tool: string): string => parseToolVersion(capture([tool, "-
  */
 const ensureGh = async (ui: Ui): Promise<string> => {
   if (Bun.which("gh") === null) {
-    await ui.run("mise", "gh を導入しています", ["mise", "use", "--global", "gh"]);
+    await ui.run("mise", "gh を導入しています", [miseBin, "use", "--global", "gh"]);
   }
 
-  const path = Bun.which("gh") ?? capture(["mise", "which", "gh"]);
+  const path = Bun.which("gh") ?? capture([miseBin, "which", "gh"]);
   if (path === null) {
     throw new Error("gh を導入できなかった");
   }
@@ -190,10 +204,11 @@ const ensureGitIdentity = async (ui: Ui, ghPath: string): Promise<void> => {
 const printNextSteps = (ui: Ui): void => {
   ui.ready("リポを編集して push できます");
   ui.section("Next Action");
-  ui.nextStep("mise run setup", "リポジトリが管理するツールを揃える");
+  const setupCommand = `${miseCommand()} run setup`;
+  ui.nextStep(setupCommand, "リポジトリが管理するツールと設定を適用する");
   ui.nextStep("claude login", "Claude Code の認証(未認証なら)");
   process.stdout.write("\n");
-  ui.clipboard("mise run setup");
+  ui.clipboard(setupCommand);
   process.stdout.write("\n");
 };
 

@@ -181,24 +181,6 @@ ui_run() {
   rm -f "$log"
 }
 
-# 外部インストーラの生ログを囲って、自前の表示と混ざらないようにする。
-# sudo を求める処理は隠せないので、隠さずに境界だけ示す。
-ui_external_begin() {
-  printf '\n'
-  ui_color "$PANDA_SUBTLE"
-  printf '   ┄┄┄┄ %s ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n\n' "$1"
-  ui_reset
-  ui_pause_line
-}
-
-ui_external_end() {
-  printf '\n'
-  ui_color "$PANDA_SUBTLE"
-  printf '   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n\n'
-  ui_reset
-  ui_pause_line
-}
-
 ui_ready() {
   printf '\n'
   ui_color "$PANDA_MINT"
