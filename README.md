@@ -89,7 +89,7 @@ mise が bottle を `/opt/homebrew` へ直接置くので Homebrew CLI は要ら
 mise run check
 ```
 
-`mise run check` が回す検証は 5 つ。
+`mise run check` が回す検証は 6 つ。
 
 | ツール            | 対象                         | 内容              |
 | ----------------- | ---------------------------- | ----------------- |
@@ -98,6 +98,10 @@ mise run check
 | tsc               | TypeScript                   | 型検査            |
 | markdownlint-cli2 | Markdown                     | 構造の lint       |
 | textlint          | Markdown                     | 日本語の文章 lint |
+| bun test          | `bin/` の TypeScript         | テスト            |
+
+テストだけを回すには `mise exec -- bun test` を使う。
+テストは対象の隣の `<対象>.test.ts` にあり、書き方と実機に残す範囲は `.claude/rules/testing.md` に従う。
 
 Bun は型を検査せず、型を落として実行するだけ。
 型エラーを見つけるには `tsc --noEmit` が要る。
@@ -120,6 +124,7 @@ mise-dotfiles/
 ├── bin/
 │   ├── git-setup.ts    commit / push できる状態にする任意タスク
 │   └── lib/
+│       ├── fixtures/   テストが子プロセスとして実行する入口
 │       ├── palette.sh  Panda 配色の単一ソース
 │       ├── palette.ts  palette.sh を TypeScript から読み込む
 │       ├── ui.sh       install.sh の表示部品

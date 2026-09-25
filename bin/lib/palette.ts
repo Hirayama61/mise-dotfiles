@@ -8,12 +8,12 @@ export type Rgb = readonly [number, number, number];
 const palettePath = join(import.meta.dir, "palette.sh");
 
 /**
- * Panda 配色を palette.sh から読み込む。
+ * palette.sh 形式の定義から Panda 配色を取り出す。
  *
+ * @param source - palette.sh の内容。`PANDA_<色名>="R G B"` 以外の行は無視する。
  * @returns 接頭辞 PANDA_ を除いた色名をキーとする RGB の表。
  */
-export const loadPalette = async (): Promise<ReadonlyMap<string, Rgb>> => {
-  const source = await Bun.file(palettePath).text();
+export const parsePalette = (source: string): ReadonlyMap<string, Rgb> => {
   const palette = new Map<string, Rgb>();
 
   for (const line of source.split("\n")) {
@@ -27,3 +27,11 @@ export const loadPalette = async (): Promise<ReadonlyMap<string, Rgb>> => {
 
   return palette;
 };
+
+/**
+ * Panda 配色を palette.sh から読み込む。
+ *
+ * @returns 接頭辞 PANDA_ を除いた色名をキーとする RGB の表。
+ */
+export const loadPalette = async (): Promise<ReadonlyMap<string, Rgb>> =>
+  parsePalette(await Bun.file(palettePath).text());
