@@ -12,7 +12,8 @@ const runFixture = (name: string, input: string): { stdout: string; exitCode: nu
 
 // 末尾の JSON が ui-dialog.ts の実行結果。プロンプトは改行なしで手前に続く。
 const dialogResult = (input: string): Record<string, unknown> => {
-  const { stdout } = runFixture("ui-dialog.ts", input);
+  const { stdout, exitCode } = runFixture("ui-dialog.ts", input);
+  expect(exitCode).toBe(0);
   return JSON.parse(stdout.slice(stdout.lastIndexOf("{"))) as Record<string, unknown>;
 };
 

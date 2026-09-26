@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -64,10 +65,21 @@ const runGitSetup = ({
 }: Scenario): RunResult => {
   const home = mkdtempSync(join(tmpdir(), "git-setup-test-"));
   const fakebin = join(home, "fakebin");
+  const systembin = join(home, "systembin");
   const outside = join(home, "outside-path");
   const markerDir = join(home, "markers");
-  for (const dir of [fakebin, outside, markerDir]) {
+  for (const dir of [fakebin, systembin, outside, markerDir]) {
     mkdirSync(dir);
+  }
+
+  // CI の runner には本物の gh が居る。PATH を偽コマンドと、テストが要る
+  // 実コマンドの symlink だけに閉じ、ホストの gh を拾わないようにする。
+  for (const tool of ["git", "touch", "cat"]) {
+    const realPath = Bun.which(tool);
+    if (realPath === null) {
+      throw new Error(`テストに必要な ${tool} が見つからない`);
+    }
+    symlinkSync(realPath, join(systembin, tool));
   }
 
   const ghPath = join(ghOnPath ? fakebin : outside, "gh");
@@ -87,7 +99,7 @@ const runGitSetup = ({
     stdout: "pipe",
     stderr: "pipe",
     env: {
-      PATH: `${fakebin}:/usr/bin:/bin`,
+      PATH: `${fakebin}:${systembin}`,
       HOME: home,
       GIT_CONFIG_GLOBAL: configPath,
       GIT_CONFIG_NOSYSTEM: "1",
