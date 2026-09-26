@@ -45,8 +45,8 @@ env = { MISE_BIN = "{{ mise_bin }}" }
 run = "bun bin/git-setup.ts"
 
 [tasks.check]
-description = "TypeScript と Markdown を format / lint / type check で検証する"
-run = ["bun install --frozen-lockfile", "bun run check"]
+description = "TypeScript と Markdown を format / lint / type check / test で検証する"
+run = ["bun install --frozen-lockfile", "bun run check", "bun test"]
 
 [tasks.docs]
 description = "Bun 公式ドキュメントの目次を取り直す"
