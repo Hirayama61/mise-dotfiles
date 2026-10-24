@@ -33,6 +33,9 @@ panda_gray_lift = "#a4a8b8"
 # Homebrew の formula は "brew:", cask は "brew-cask:" で宣言する。
 # mise が bottle と cask を直接置くので、Homebrew CLI は要らない。
 [bootstrap.packages]
+# fish は mise の registry に無く aqua 経由になる。ログインシェルは /etc/shells に固定パスで
+# 登録する必要があり、mise の導入先はバージョンごとに変わるため Homebrew で入れる。
+"brew:fish" = "latest"
 "brew:tig" = "latest" # git TUI。mise の registry に無い
 "brew-cask:ghostty" = { os = "macos" }
 "brew-cask:raycast" = { os = "macos" }
@@ -42,6 +45,8 @@ panda_gray_lift = "#a4a8b8"
 
 [dotfiles]
 "~/.claude/rules" = "claude/rules"
+# fish の設定。活性化(mise / starship)もこのファイルに書く。
+"~/.config/fish/config.fish" = "config/fish/config.fish"
 
 # ツール設定。ディレクトリごと symlink できるものはそのまま、配色が要るものだけ Tera で描画する。
 # ~/.gitconfig は端末ローカルの書き先(git config --global)として残し、共有設定の include だけを管理する。
@@ -59,14 +64,11 @@ panda_gray_lift = "#a4a8b8"
 "~/.config/tig/config" = "config/tig/config"
 "~/.config/gwq/config.toml" = "config/gwq/config.toml"
 "~/.config/mise/config.toml" = "config/mise/config.toml"
-# mise は ~/.local/bin に入るが、素の macOS ではそこが PATH に無い。
-# 下の shell activation が書く eval "$(mise activate zsh)" は裸の mise を呼ぶので、
-# 同じ ~/.zprofile の先頭側で PATH へ通す。dotfiles は shell activation より先に適用される。
-"~/.zprofile/local-bin" = { block = 'export PATH="$HOME/.local/bin:$PATH"' }
 
-# ~/.zprofile に shims、~/.zshrc に activate を書く。
-[bootstrap.mise_shell_activate]
-zsh = true
+# ログインシェルを fish にする。/etc/shells への登録(初回は sudo)と chsh を mise が行う。
+# zsh の設定は管理しない。zsh の startup file にも書かない。
+[bootstrap.user]
+login_shell = "fish"
 
 # macOS の設定。旧 bin/macos-defaults.sh の宣言化。Finder / Dock は再起動後に反映される。
 [bootstrap.macos.dock]

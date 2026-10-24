@@ -32,4 +32,4 @@ clipboard-write = allow
 clipboard-trim-trailing-spaces = true
 
 # シェル統合
-shell-integration = zsh
+shell-integration = fish
