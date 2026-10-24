@@ -27,10 +27,11 @@ describe("mergeSettings", () => {
       ]);
     });
 
-    test("PreToolUse に Bash matcher で不可逆な git / gh 操作の遮断を登録する", () => {
+    test("PreToolUse に Bash matcher で不可逆な git / gh 操作の遮断と push 前レビューゲートを登録する", () => {
       const group = groupsOf(merged, "PreToolUse").find(({ matcher }) => matcher === "Bash");
       expect(group?.hooks.map((hook) => hook.command)).toEqual([
         expect.stringContaining('"$HOME/.claude/hooks/block-irreversible-git.ts"'),
+        expect.stringContaining('"$HOME/.claude/hooks/review-gate.ts"'),
       ]);
     });
 
