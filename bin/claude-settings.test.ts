@@ -22,8 +22,15 @@ describe("mergeSettings", () => {
     test("PreToolUse に Edit 系 matcher で main clone ブロックを登録する", () => {
       const [group] = groupsOf(merged, "PreToolUse");
       expect(group?.matcher).toBe("Edit|Write|MultiEdit|NotebookEdit");
-      expect(commandsOf(merged, "PreToolUse")).toEqual([
+      expect(group?.hooks.map((hook) => hook.command)).toEqual([
         expect.stringContaining('"$HOME/.claude/hooks/block-main-clone-edit.ts"'),
+      ]);
+    });
+
+    test("PreToolUse に Bash matcher で不可逆な git / gh 操作の遮断を登録する", () => {
+      const group = groupsOf(merged, "PreToolUse").find(({ matcher }) => matcher === "Bash");
+      expect(group?.hooks.map((hook) => hook.command)).toEqual([
+        expect.stringContaining('"$HOME/.claude/hooks/block-irreversible-git.ts"'),
       ]);
     });
 
@@ -71,16 +78,21 @@ describe("mergeSettings", () => {
     });
 
     test("同じ matcher の人間の登録を残し、その後ろに管理対象を足す", () => {
-      expect(commandsOf(merged, "PreToolUse")).toEqual([
+      const [group] = groupsOf(merged, "PreToolUse");
+      expect(group?.hooks.map((hook) => hook.command)).toEqual([
         "/usr/local/bin/my-lint.sh",
         expect.stringContaining("block-main-clone-edit.ts"),
       ]);
     });
 
-    test("~/.claude/hooks を指す古い登録は外し、空になった group は消す", () => {
+    test("~/.claude/hooks を指す古い登録は外し、管理対象だけを登録し直す", () => {
       expect(groupsOf(merged, "PreToolUse").map((group) => group.matcher)).toEqual([
         "Edit|Write|MultiEdit|NotebookEdit",
+        "Bash",
       ]);
+      expect(commandsOf(merged, "PreToolUse")).not.toContainEqual(
+        expect.stringContaining("removed-hook.ts"),
+      );
     });
 
     test("autoMemoryEnabled は true でも false に揃える", () => {

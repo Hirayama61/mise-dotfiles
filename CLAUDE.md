@@ -39,6 +39,11 @@ Claude は main clone(`~/ghq` 配下のプライマリ作業ツリー)を編集�
 人間は `gwq add -b <branch>` で同じ場所に作る。
 1 worktree = 1 ブランチ。同じブランチの続きは既存の worktree を使う。
 
+## 不可逆な git / gh 操作
+
+force push・保護ブランチでの push / merge・未コミット作業の破棄などは `block-irreversible-git` hook が止める。
+止められたら書き方を変えて迂回しない。コマンドを人間に示し、`!` での実行を頼む。
+
 ## Claude Code の設定管理
 
 `claude/rules` と `claude/hooks` は `~/.claude` 配下へ symlink する。

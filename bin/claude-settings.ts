@@ -25,6 +25,10 @@ const managedHooks: HookTable = {
       matcher: "Edit|Write|MultiEdit|NotebookEdit",
       hooks: [{ type: "command", command: hookCommand("block-main-clone-edit.ts") }],
     },
+    {
+      matcher: "Bash",
+      hooks: [{ type: "command", command: hookCommand("block-irreversible-git.ts") }],
+    },
   ],
   WorktreeCreate: [{ hooks: [{ type: "command", command: hookCommand("create-worktree.ts") }] }],
 };

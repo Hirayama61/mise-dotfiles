@@ -103,6 +103,31 @@ Claude は main clone(`~/ghq` 配下のプライマリ作業ツリー)を編集�
 hook は Claude Code を通る操作にだけ効く。
 人間の手編集と、Claude が Bash で直接打つ `git worktree add` は対象外。
 
+### Claude Code の不可逆操作の遮断
+
+`block-irreversible-git` hook が、Claude の Bash 呼び出しのうち取り返しのつかない git / gh 操作を、走る前に止める。
+止めたときは理由と代わりの行動を Claude に返す。
+人間はプロンプトで `!` に続けて同じコマンドを打てば実行できる。`!` のコマンドは hook を通らない。
+
+| 分類                    | 止めるコマンド                                                                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| force push              | `git push` の `--force` / `--force-with-lease` / `--force-if-includes` / `-f`                                                                                             |
+| 保護ブランチ            | 現在ブランチが `main` / `master` / `develop` のときの `git push` / `git merge`(`merge --abort` は通す)                                                                    |
+| 未コミット作業の破棄    | `reset --hard`、`clean -f`、`stash drop` / `clear`、`checkout --` / `-f` / パス指定、`switch --discard-changes` / `-f`、`restore`、`branch -D`、`worktree remove --force` |
+| push 済み HEAD の amend | HEAD が remote ブランチに含まれるときの `git commit --amend`                                                                                                              |
+| フックの迂回            | `git commit --no-verify` / `-n`                                                                                                                                           |
+| gh の外向き操作         | `pr merge` / `close` / `ready`、`release create` / `delete` / `edit`、`repo delete` / `archive` / `edit`                                                                  |
+
+コマンドは `&&` / `;` / `|` やコマンド置換で区切った単純コマンドごとに判定する。
+クォート内の文字列・heredoc の本文・コメントは見ないので、`echo "git push -f"` や `git log | grep push` は止まらない。
+現在ブランチは `cd <dir> &&` と `git -C <dir>` の先で調べる。
+git 外・ブランチ不明・入力の解析失敗では止めない。
+
+判定は字句の best-effort で、うっかり実行の抑止にとどまる。
+alias・`bash -c`・変数展開を経由した形と、明示 refspec(`git push origin HEAD:main`、`+branch`)は止まらない。
+`permissions.deny` は使わない。
+deny ルールは理由を返せず、`git -C . push` のような形もすり抜けるため。
+
 auto memory は `autoMemoryEnabled: false` で全リポジトリ止める。
 必要なリポジトリだけ `.claude/settings.local.json` で ON にできる。
 
@@ -193,9 +218,10 @@ mise-dotfiles/
 │   │   └── typescript.md        コーディング規約(.ts を触るときだけ)
 │   ├── agents/         Haiku 固定の役割限定 subagent(~/.claude/agents から symlink)
 │   └── hooks/          Claude Code の hook 本体(~/.claude/hooks から symlink)
-│       ├── block-main-clone-edit.ts  main clone 本体の編集を拒否する
-│       ├── create-worktree.ts        EnterWorktree の worktree を gwq の規約の場所に作る
-│       └── lib/                      stdin の読み取りと git の判定
+│       ├── block-main-clone-edit.ts   main clone 本体の編集を拒否する
+│       ├── block-irreversible-git.ts  不可逆な git / gh 操作を拒否する
+│       ├── create-worktree.ts         EnterWorktree の worktree を gwq の規約の場所に作る
+│       └── lib/                       stdin の読み取り・git の判定・シェルの字句分割
 ├── .claude/
 │   ├── rules/          このリポジトリだけで読む規約群
 │   └── skills/         このリポジトリだけで使うスキル群
