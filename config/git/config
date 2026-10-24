@@ -1,0 +1,43 @@
+# user.name / user.email は端末ローカルの ~/.gitconfig に置く(mise run git-setup が書く)。
+# このファイルは ~/.gitconfig の [include] から読まれる共有設定。
+
+[core]
+    hooksPath = ~/.config/git/hooks
+
+[init]
+    defaultBranch = main
+
+[push]
+    autoSetupRemote = true
+
+# gh CLI を credential helper として使用
+[credential "https://github.com"]
+    helper =
+    helper = !gh auth git-credential
+
+[credential "https://gist.github.com"]
+    helper =
+    helper = !gh auth git-credential
+
+# 配色は mise.toml の [vars](bin/lib/palette.sh と一致をテストで検査)。git 2.26+ は hex 受理。
+[color]
+    ui = auto
+
+[color "diff"]
+    meta = "{{ vars.panda_subtle }}"
+    frag = "{{ vars.panda_cyan }}"
+    old = "{{ vars.panda_red }}"
+    new = "{{ vars.panda_mint }}"
+    commit = "{{ vars.panda_orange }}"
+    whitespace = "reverse {{ vars.panda_red }}"
+
+[color "status"]
+    added = "{{ vars.panda_mint }}"
+    changed = "{{ vars.panda_orange }}"
+    untracked = "{{ vars.panda_subtle }}"
+    deleted = "{{ vars.panda_red }}"
+
+[color "branch"]
+    current = "{{ vars.panda_mint }}"
+    local = "{{ vars.panda_fg }}"
+    remote = "{{ vars.panda_purple_lift }}"

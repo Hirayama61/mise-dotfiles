@@ -1,0 +1,33 @@
+# mise グローバル設定(~/.config/mise/config.toml。mise-dotfiles の config/mise/config.toml から symlink)。
+#
+# ここの [tools] はどの cwd でも有効。プロジェクト固有のツールは各プロジェクトの mise.toml に書く。
+# [bootstrap] と [dotfiles] は mise-dotfiles の mise.toml に置き、ここには書かない。
+
+[tools]
+bun = "1"
+node = "lts"
+gh = "latest"
+ghq = "latest"
+"github:d-kuro/gwq" = "latest" # git worktree マネージャ。~/worktrees/<host>/<owner>/<repo>/<branch> に並べる
+tmux = "latest"
+fzf = "latest" # tmux の jump.zsh が使う
+eza = "latest" # jump.zsh のプレビュー
+bat = "latest" # jump.zsh のプレビュー
+ripgrep = "latest" # Neovim Telescope live_grep の必須依存
+fd = "latest" # Neovim Telescope find_files の高速化
+neovim = "latest"
+tree-sitter = "latest" # nvim-treesitter がパーサを build するのに必須
+starship = "latest"
+rust = { version = "latest", components = "rust-analyzer" }
+
+# シェルスクリプトの品質。グローバル git pre-commit から mise exec で呼ぶ。
+shellcheck = "latest"
+shfmt = "latest"
+"npm:secretlint" = "latest"
+"npm:@secretlint/secretlint-rule-preset-recommend" = "latest"
+
+# LSP サーバー。Neovim と Claude Code が PATH 経由で同じバイナリを共有する(Mason は使わない)。
+lua-language-server = "latest"
+marksman = "latest"
+"npm:@vtsls/language-server" = "latest"
+"npm:vscode-langservers-extracted" = "latest"

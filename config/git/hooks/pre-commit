@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# Sensitive-words guard hook
+#
+# ~/.config/git/sensitive-words.txt に列挙した語(1 行 1 パターン、grep -E)が
+# staged diff に現れたらコミットをブロックする。リスト本体は隠したい文字列の
+# 一覧そのものなので git 管理外のローカルファイルに置く(リポには .example のみ)。
+#
+# 誤検知時は git commit --no-verify で回避。リスト不在/staged 空なら素通し。
+
+set -eu
+
+words_file="$HOME/.config/git/sensitive-words.txt"
+[ -f "$words_file" ] || exit 0
+
+# 追加行(先頭 +)だけを照合対象にする。削除行・コンテキスト行・diff ヘッダ(+++/---/@@)
+# まで含めると、機密語を「削除する」コミットや差分ヘッダのパス名で誤ブロックする(E-H2)。
+# ヘッダ除外は `+++ a/` `+++ b/` 形に限定する。単純な `^+++` だと、追加行の内容が `++` で
+# 始まる場合(diff 上は `++++secret...`)まで誤除外し機密語を取りこぼす(CodeRabbit PR#79)。
+# 末尾 CR も除去する。被検査側に CR が残ると end-anchor パターン($)が CRLF ファイルで
+# 取りこぼす(E-C2 のリスト側 strip と対称。GNU grep で顕著)。
+diff=$(git diff --cached --diff-filter=ACMR 2>/dev/null | grep '^+' | grep -vE '^\+\+\+ [ab]/' | tr -d '\r' || true)
+[ -n "$diff" ] || exit 0
+
+found=0
+while IFS= read -r word || [ -n "$word" ]; do
+  # CRLF のリストだと末尾 CR が ERE に混ざり全パターンが無効化される(E-C2)。
+  word=${word%$'\r'}
+  [[ -z "$word" || "$word" == \#* ]] && continue
+
+  # 不正な ERE を `|| true` で握ると grep のエラー(rc>=2)をマッチ無しと取り違え、
+  # typo パターンが沈黙スキップされる(E-C1)。rc>=2 はエラーとして fail-closed する。
+  rc=0
+  matches=$(printf '%s\n' "$diff" | grep -inE "$word") || rc=$?
+  if [ "$rc" -ge 2 ]; then
+    echo "ERROR: 機密語パターンが不正な正規表現です(grep rc=$rc): $word" >&2
+    echo "~/.config/git/sensitive-words.txt の該当パターンを修正してください。" >&2
+    exit 1
+  fi
+  [ -n "$matches" ] || continue
+
+  if [ "$found" -eq 0 ]; then
+    echo "ERROR: 機密語が staged 内容に含まれています。コミットを中止しました。" >&2
+    echo >&2
+    found=1
+  fi
+  echo "  パターン: $word" >&2
+  printf '%s\n' "$matches" | head -5 | sed 's/^/    /' >&2
+  echo >&2
+done <"$words_file"
+
+if [ "$found" -ne 0 ]; then
+  echo "誤検知の場合のみ git commit --no-verify で回避してください。" >&2
+  exit 1
+fi
+
+# Secretlint guard
+#
+# staged(追加/変更分)に対し秘密情報スキャン。検出時はコミット中止。
+# mise の npm 隔離インストールでは secretlint 本体と preset-recommend が別の
+# install ディレクトリに入り secretlint のリゾルバが preset を解決できない。
+# preset の node_modules を NODE_PATH で明示してこれを回避する。
+# secretlint / preset 不在時は警告のみで素通し(他ブロックの方針に合わせる)。
+# NUL 区切りはシェル変数に保持できないため -z 出力はパイプ直結で xargs に渡す。
+
+if mise which secretlint >/dev/null 2>&1; then
+  preset_dir=$(mise where "npm:@secretlint/secretlint-rule-preset-recommend" 2>/dev/null || true)
+  if [ -z "$preset_dir" ]; then
+    echo "警告: secretlint preset が見つかりません。mise install を実行してください。" >&2
+  else
+    # secretlint 13 は ESM で NODE_PATH を見ないため、preset を絶対パスで指す設定を直接渡す。
+    # mise の npm backend は版によって <install>/lib/node_modules と <install>/node_modules の両方がある。
+    preset_module="$preset_dir/node_modules/@secretlint/secretlint-rule-preset-recommend"
+    [ -d "$preset_dir/lib/node_modules" ] && preset_module="$preset_dir/lib/node_modules/@secretlint/secretlint-rule-preset-recommend"
+    rc_json="{\"rules\":[{\"id\":\"$preset_module\"}]}"
+    staged_count=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$staged_count" -gt 0 ]; then
+      if ! git diff --cached --name-only -z --diff-filter=ACM |
+        xargs -0 mise exec -- secretlint --secretlintrcJSON "$rc_json"; then
+        echo "ERROR: secretlint が秘密情報を検出しました。コミットを中止しました。" >&2
+        echo "誤検知の場合のみ git commit --no-verify で回避してください。" >&2
+        exit 1
+      fi
+    fi
+  fi
+else
+  echo "警告: secretlint が見つかりません。mise install を実行してください。" >&2
+fi
+
+# shfmt auto-format
+#
+# staged の .sh を自動整形して再 stage する。インデントは本リポの全シェル
+# スクリプトが2スペース統一のため -i 2(タブ基底は皆無)。不在時は素通し。
+
+if mise which shfmt >/dev/null 2>&1; then
+  sh_files=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep '\.sh$' || true)
+  if [ -n "$sh_files" ]; then
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      # set -eu 下で shfmt が失敗(構文エラー等)すると hook が無言クラッシュし
+      # コミットが理由不明に止まる(E-H1)。整形失敗は警告して再 stage を見送り、
+      # 構文の実害は後段の shellcheck に委ねる。
+      if mise exec -- shfmt -i 2 -w "$f"; then
+        git add "$f"
+      else
+        echo "警告: shfmt が $f の整形に失敗しました(構文エラー?)。整形をスキップします。" >&2
+      fi
+    done <<<"$sh_files"
+  fi
+fi
+
+# Shellcheck static analysis
+#
+# staged の .sh を静的解析(-x で source 追従)。問題検出でコミット中止。
+# 解析ツール不在時は警告のみで素通し。
+
+if mise which shellcheck >/dev/null 2>&1; then
+  sh_files=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep '\.sh$' || true)
+  if [ -n "$sh_files" ]; then
+    sc_failed=0
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      if ! mise exec -- shellcheck -x "$f"; then
+        sc_failed=1
+      fi
+    done <<<"$sh_files"
+    if [ "$sc_failed" -ne 0 ]; then
+      echo "ERROR: shellcheck が問題を検出しました。修正してからコミットしてください。" >&2
+      exit 1
+    fi
+  fi
+else
+  echo "警告: shellcheck が見つかりません。mise install を実行してください。" >&2
+fi
+
+# ローカルフックのチェーン実行
+#
+# core.hooksPath をグローバル設定しているため、各リポの husky/lefthook/標準
+# .git/hooks は本来 git 仕様で完全バイパスされる。上の security/品質ゲートを
+# 全通過した後にここで明示委譲し、プロジェクト固有 pre-commit も走らせる。
+# exec でプロセス置換するため、いずれかが起動したら以降の処理は無い。
+
+# husky v9+
+if [ -x ".husky/pre-commit" ]; then
+  exec .husky/pre-commit "$@"
+fi
+
+# lefthook(PATH 直 → mise の順で検出。設定は lefthook.yml / lefthook.yaml を対象)
+if [ -f "lefthook.yml" ] || [ -f "lefthook.yaml" ]; then
+  if command -v lefthook >/dev/null 2>&1; then
+    exec lefthook run pre-commit
+  elif mise which lefthook >/dev/null 2>&1; then
+    exec mise exec -- lefthook run pre-commit
+  fi
+fi
+
+# 標準ローカルフック(.git/hooks/pre-commit)
+git_dir=$(git rev-parse --git-dir 2>/dev/null || true)
+if [ -n "$git_dir" ] && [ -x "$git_dir/hooks/pre-commit" ]; then
+  exec "$git_dir/hooks/pre-commit" "$@"
+fi
+
+exit 0
