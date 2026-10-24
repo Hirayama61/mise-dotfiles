@@ -21,6 +21,32 @@ Apple Silicon macOS 用の dotfiles。
 
 Homebrew の formula が要るときは `mise.toml` の `[bootstrap.packages]` に `brew:` で宣言する。Homebrew CLI の導入を書かない。
 
+## 知識の置き場所
+
+| 種類                                        | 置き場所                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------- |
+| 状態(PR / Issue のマージ状況、未実施・保留) | 書かない。毎回 `git` / `gh` から取る                                |
+| 全リポジトリに効く恒久的な規約              | `claude/rules/`                                                     |
+| このリポジトリの恒久的な方針                | `CLAUDE.md`                                                         |
+| 一部でしか使わない局所的な知識              | その変更のコミットメッセージ                                        |
+| auto memory                                 | 使わない。`autoMemoryEnabled: false` を `mise run setup` が配布する |
+
+## worktree 運用
+
+Claude は main clone(`~/ghq` 配下のプライマリ作業ツリー)を編集しない。hook が拒否する。
+編集は `EnterWorktree` で作った worktree で行う。
+配置は gwq の規約(`~/worktrees/<host>/<owner>/<repo>/<branch>`)に従う。
+人間は `gwq add -b <branch>` で同じ場所に作る。
+1 worktree = 1 ブランチ。同じブランチの続きは既存の worktree を使う。
+
+## Claude Code の設定管理
+
+`claude/rules` と `claude/hooks` は `~/.claude` 配下へ symlink する。
+`~/.claude/settings.json` は Claude Code 自身が `/config` の値を書くため symlink にしない。
+`bin/claude-settings.ts` が管理キーだけをマージ書き込みする。
+管理キーは `~/.claude/hooks` を指す hook の登録と `autoMemoryEnabled` だけで、それ以外には触れない。
+Claude Code が自動生成するファイル・ディレクトリは symlink 管理に含めない。
+
 ## Issue 起案
 
 Issue の起案は `/create-issue` で行う。作業中にその場で直せない摩擦や課題を見つけたら、実行を提案する。

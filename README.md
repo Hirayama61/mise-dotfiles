@@ -64,14 +64,16 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 `mise bootstrap --yes` を実行し、`mise.toml` の宣言どおりにツールと設定を適用する。
 既に済んでいる項目は飛ばすので、何度実行しても同じ結果になり、2 度目からは sudo と対話が発生しない。
 
-| 対象               | 内容                                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| `~/.claude/rules`  | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                          |
-| `~/.zprofile`      | `~/.local/bin` を PATH へ通す行と、mise の shims を有効にする行                                  |
-| `~/.zshrc`         | mise を有効にする行                                                                              |
-| Bun / node         | `[tools]` から入れる                                                                             |
-| agent-browser      | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                               |
-| Chrome for Testing | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない |
+| 対象                      | 内容                                                                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `~/.claude/rules`         | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                      |
+| `~/.claude/hooks`         | `claude/hooks` への symlink。Claude Code の hook 本体                                                                        |
+| `~/.claude/settings.json` | 管理キー(hook の登録・`autoMemoryEnabled: false`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない |
+| `~/.zprofile`             | `~/.local/bin` を PATH へ通す行と、mise の shims を有効にする行                                                              |
+| `~/.zshrc`                | mise を有効にする行                                                                                                          |
+| Bun / node                | `[tools]` から入れる                                                                                                         |
+| agent-browser             | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                           |
+| Chrome for Testing        | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                             |
 
 shell の rc ファイルへの書き込みは `# >>> mise:... >>>` のマーカーで囲んだ行だけを mise が管理し、それ以外の行には触れない。
 Homebrew の formula が要るときは `[bootstrap.packages]` に `"brew:<formula>" = "latest"` と書く。
@@ -79,6 +81,24 @@ mise が bottle を `/opt/homebrew` へ直接置くので Homebrew CLI は要ら
 
 `agent-browser` は `/create-issue` が ChatGPT の共有チャットを読むために使う。
 共有ページの本文はクライアント側で描画されるため、HTML を取るだけでは読めない。
+
+### Claude Code の worktree 運用
+
+Claude は main clone(`~/ghq` 配下のプライマリ作業ツリー)を編集しない。
+編集は `EnterWorktree` で作る worktree の中で行い、人間が同じ配置に作るときは `gwq add -b <branch>` を使う。
+
+| hook                    | 発火                                         | 内容                                                                                                              |
+| ----------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `block-main-clone-edit` | Edit / Write / MultiEdit / NotebookEdit の前 | 対象が `~/ghq` 配下の main clone 本体なら拒否し、`EnterWorktree` へ案内する。linked worktree はどこにあっても通す |
+| `create-worktree`       | `EnterWorktree`・subagent の worktree 隔離   | 既定の `.claude/worktrees/` 配下でなく、`gwq add` で `~/worktrees/<host>/<owner>/<repo>/<branch>` に作る          |
+
+`create-worktree` はブランチ名に worktree の名前をそのまま使い、同じブランチの worktree が既にあればそれを返す。
+作れなかったときは失敗として止まり、既定配置へ黙って落とさない。
+hook は Claude Code を通る操作にだけ効く。
+人間の手編集と、Claude が Bash で直接打つ `git worktree add` は対象外。
+
+auto memory は `autoMemoryEnabled: false` で全リポジトリ止める。
+必要なリポジトリだけ `.claude/settings.local.json` で ON にできる。
 
 ## 開発
 
@@ -119,15 +139,20 @@ mise-dotfiles/
 ├── install.sh          curl の入口。clone と mise の導入
 ├── bin/
 │   ├── git-setup.ts    commit / push できる状態にする任意タスク
+│   ├── claude-settings.ts  ~/.claude/settings.json へ管理キーをマージ書き込みする
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       ├── palette.ts  palette.sh を TypeScript から読み込む
 │       ├── ui.sh       install.sh の表示部品
 │       └── ui.ts       TypeScript タスクの表示と対話部品
 ├── claude/
-│   └── rules/          Claude Code が全プロジェクトで読む規約群
-│       ├── japanese-writing.md  日本語の文章規範(常時)
-│       └── typescript.md        コーディング規約(.ts を触るときだけ)
+│   ├── rules/          Claude Code が全プロジェクトで読む規約群
+│   │   ├── japanese-writing.md  日本語の文章規範(常時)
+│   │   └── typescript.md        コーディング規約(.ts を触るときだけ)
+│   └── hooks/          Claude Code の hook 本体(~/.claude/hooks から symlink)
+│       ├── block-main-clone-edit.ts  main clone 本体の編集を拒否する
+│       ├── create-worktree.ts        EnterWorktree の worktree を gwq の規約の場所に作る
+│       └── lib/                      stdin の読み取りと git の判定
 ├── .claude/
 │   ├── rules/          このリポジトリだけで読む規約群
 │   └── skills/         このリポジトリだけで使うスキル群

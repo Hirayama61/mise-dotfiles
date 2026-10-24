@@ -17,6 +17,8 @@ node = "lts"
 
 [dotfiles]
 "~/.claude/rules" = "claude/rules"
+# hooks の本体。settings.json への登録は bootstrap タスクの bin/claude-settings.ts が行う。
+"~/.claude/hooks" = "claude/hooks"
 # mise は ~/.local/bin に入るが、素の macOS ではそこが PATH に無い。
 # 下の shell activation が書く eval "$(mise activate zsh)" は裸の mise を呼ぶので、
 # 同じ ~/.zprofile の先頭側で PATH へ通す。dotfiles は shell activation より先に適用される。
@@ -35,8 +37,12 @@ run = "{{ mise_bin }} bootstrap --yes"
 # mise bootstrap が [tools] を入れた後に呼ぶ。宣言で書けない手続きだけを置く。
 [tasks.bootstrap]
 hide = true
-# agent-browser install は Chrome for Testing を ~/.agent-browser/browsers へ置く。導入済みなら何もしない。
-run = "agent-browser install"
+run = [
+  # Chrome for Testing を ~/.agent-browser/browsers へ置く。導入済みなら何もしない。
+  "agent-browser install",
+  # ~/.claude/settings.json は Claude Code 自身が書くので symlink にせず、管理キーだけをマージする。
+  "bun bin/claude-settings.ts",
+]
 
 [tasks.git-setup]
 description = "このリポジトリに commit / push できる状態にする(任意)"
@@ -45,8 +51,8 @@ env = { MISE_BIN = "{{ mise_bin }}" }
 run = "bun bin/git-setup.ts"
 
 [tasks.check]
-description = "TypeScript と Markdown を format / lint / type check で検証する"
-run = ["bun install --frozen-lockfile", "bun run check"]
+description = "TypeScript と Markdown を format / lint / type check / test で検証する"
+run = ["bun install --frozen-lockfile", "bun run check", "bun test"]
 
 [tasks.docs]
 description = "Bun 公式ドキュメントの目次を取り直す"
