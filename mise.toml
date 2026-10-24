@@ -39,8 +39,8 @@ panda_gray_lift = "#a4a8b8"
 "brew:tig" = "latest" # git TUI。mise の registry に無い
 "brew-cask:ghostty" = { os = "macos" }
 "brew-cask:raycast" = { os = "macos" }
-"brew-cask:obsidian" = { os = "macos" } # 外部脳 vault(~/obsidian/brain)の閲覧
-"brew-cask:coderabbit" = { os = "macos" } # CLI レビュー本体
+# 手動で入れた Chrome を置き換えず取り込む。自己更新するアプリなので内容の照合なしで引き継がれる。
+"brew-cask:google-chrome" = { os = "macos", adopt = true }
 "brew-cask:font-jetbrains-mono-nerd-font" = "latest" # Ghostty のフォント
 
 [dotfiles]

@@ -18,7 +18,7 @@ fd = "latest" # Neovim Telescope find_files の高速化
 neovim = "latest"
 tree-sitter = "latest" # nvim-treesitter がパーサを build するのに必須
 starship = "latest"
-rust = { version = "latest", components = "rust-analyzer" }
+jq = "latest" # hook の検証や作業中の JSON 処理
 
 # シェルスクリプトの品質。グローバル git pre-commit から mise exec で呼ぶ。
 shellcheck = "latest"
