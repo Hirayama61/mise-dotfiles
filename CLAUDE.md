@@ -78,7 +78,13 @@ Tera で描画するファイルに zsh の文字数展開のような波括弧�
 ツールの設定は `config/<tool>/` に置き、`mise.toml` の `[dotfiles]` で `~/.config` 配下へ配る。  
 ディレクトリごと symlink できるものはそのまま、配色など環境差の展開が要るファイルだけ `mode = "template"` にする。  
 ツールが自動生成するファイル(`lazy-lock.json` 等)はリポジトリに入れない。  
-シェルは fish に寄せる(#9)。zsh と zed の設定は持ち込まない。
+シェルは fish。zsh と zed の設定は持ち込まない。
+
+## fish のドキュメント
+
+fish は man ページと HTML ドキュメントを同梱する。
+コマンドの仕様は `man fish` / `man fish-doc`、組み込み関数は `help <name>` でローカルの HTML を開く。
+公式に `llms.txt` は無いため、Bun のような目次取得タスクは作らない。
 
 ## ブラウザツール
 
