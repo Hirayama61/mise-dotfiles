@@ -439,10 +439,12 @@ const isDirectory = (path: string): boolean => {
  */
 const findBlock = (command: string, cwd: string): Block | null => {
   const dirsByScope = new Map<string, string>();
-  // HEAD はファイルシステム上の状態なので、サブシェル内の switch も後続に効く。
+  // HEAD は worktree ごとのファイルシステム上の状態なので、サブシェル内の switch も、
+  // 同じ worktree の別ディレクトリからの push も、切り替え後のブランチで判定する。
   const switchedBranches = new Map<string, string>();
+  const worktreeOf = (dir: string): string => git(dir, ["rev-parse", "--show-toplevel"]) ?? dir;
   const branchOf: BranchLookup = (dir) =>
-    switchedBranches.get(dir) ?? git(dir, ["branch", "--show-current"]);
+    switchedBranches.get(worktreeOf(dir)) ?? git(dir, ["branch", "--show-current"]);
 
   for (const simpleCommand of splitSimpleCommands(command)) {
     const invocation = interpret(
@@ -474,9 +476,9 @@ const findBlock = (command: string, cwd: string): Block | null => {
           switched === "-" ? git(dir, ["rev-parse", "--abbrev-ref", "@{-1}"]) : switched;
         // 切り替え先が分からなければ、実際の HEAD を見る側に戻す。
         if (resolved === null) {
-          switchedBranches.delete(dir);
+          switchedBranches.delete(worktreeOf(dir));
         } else {
-          switchedBranches.set(dir, resolved);
+          switchedBranches.set(worktreeOf(dir), resolved);
         }
       }
     }
