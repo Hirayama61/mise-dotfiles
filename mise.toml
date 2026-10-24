@@ -49,6 +49,8 @@ panda_gray_lift = "#a4a8b8"
 "~/.claude/hooks" = "claude/hooks"
 # Haiku 固定の役割限定 subagent。同名の定義がプロジェクトの .claude/agents にあればそちらが優先される。
 "~/.claude/agents" = "claude/agents"
+# ステータスラインの描画スクリプト。settings.json の statusLine は bin/claude-settings.ts が登録する。
+"~/.claude/statusline" = "claude/statusline"
 # fish の設定。活性化(mise / starship)もこのファイルに書く。
 "~/.config/fish/config.fish" = "config/fish/config.fish"
 

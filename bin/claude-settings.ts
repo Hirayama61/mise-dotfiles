@@ -34,7 +34,11 @@ const managedHooks: HookTable = {
 };
 
 // auto memory は PR / Issue の状態を日付つきで溜め、gh から取れる事実より古い前提を残す。
-const managedValues: Record<string, unknown> = { autoMemoryEnabled: false };
+// statusLine も管理キーなので、/statusline が書いた値は setup の再実行で上書きされる。
+const managedValues: Record<string, unknown> = {
+  autoMemoryEnabled: false,
+  statusLine: { type: "command", command: `"${bunPath}" "$HOME/.claude/statusline/statusline.ts"` },
+};
 
 const isHookCommand = (value: unknown): value is HookCommand =>
   typeof value === "object" && value !== null && typeof (value as HookCommand).command === "string";
@@ -94,7 +98,7 @@ const mergeGroups = (existing: HookGroup[], managed: HookGroup[]): HookGroup[] =
 /**
  * settings.json に管理キーを書き込んだ結果を返す。
  *
- * 管理キーは hooks の登録(~/.claude/hooks を指すもの)と autoMemoryEnabled だけ。
+ * 管理キーは hooks の登録(~/.claude/hooks を指すもの)と autoMemoryEnabled・statusLine だけ。
  * それ以外のキーと、人間が足した hook 登録には触れない。
  *
  * @param current - 現在の settings.json。
@@ -154,7 +158,7 @@ const runClaudeSettings = async (): Promise<void> => {
   await Bun.write(stagingPath, `${JSON.stringify(next, null, 2)}\n`);
   renameSync(stagingPath, path);
   console.log(
-    `更新: ${shortenHome(path)}(hooks: ${Object.keys(managedHooks).join(", ")} / autoMemoryEnabled: false)`,
+    `更新: ${shortenHome(path)}(hooks: ${Object.keys(managedHooks).join(", ")} / ${Object.keys(managedValues).join(", ")})`,
   );
 };
 

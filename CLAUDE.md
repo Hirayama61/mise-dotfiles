@@ -46,10 +46,10 @@ force push・保護ブランチでの push / merge・未コミット作業の破
 
 ## Claude Code の設定管理
 
-`claude/rules` と `claude/hooks` は `~/.claude` 配下へ symlink する。
+`claude/{rules,hooks,agents,statusline}` は `~/.claude` 配下へ symlink する。
 `~/.claude/settings.json` は Claude Code 自身が `/config` の値を書くため symlink にしない。
 `bin/claude-settings.ts` が管理キーだけをマージ書き込みする。
-管理キーは `~/.claude/hooks` を指す hook の登録と `autoMemoryEnabled` だけで、それ以外には触れない。
+管理キーは `~/.claude/hooks` を指す hook の登録と `autoMemoryEnabled`・`statusLine` だけで、それ以外には触れない。
 Claude Code が自動生成するファイル・ディレクトリは symlink 管理に含めない。
 
 ## subagent の使い分け
