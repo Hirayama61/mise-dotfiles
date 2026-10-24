@@ -67,6 +67,9 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 | 対象                                                                        | 内容                                                                                                                                     |
 | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                  |
+| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                    |
+| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない             |
+| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                         |
 | `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                             |
 | `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                            |
 | tig・cask 5 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / obsidian / coderabbit / JetBrains Mono Nerd Font)                                  |
@@ -83,6 +86,40 @@ mise が bottle を `/opt/homebrew` へ直接置くので Homebrew CLI は要ら
 
 `agent-browser` は `/create-issue` が ChatGPT の共有チャットを読むために使う。
 共有ページの本文はクライアント側で描画されるため、HTML を取るだけでは読めない。
+
+### Claude Code の worktree 運用
+
+Claude は main clone(`~/ghq` 配下のプライマリ作業ツリー)を編集しない。
+編集は `EnterWorktree` で作る worktree の中で行い、人間が同じ配置に作るときは `gwq add -b <branch>` を使う。
+
+| hook                    | 発火                                         | 内容                                                                                                              |
+| ----------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `block-main-clone-edit` | Edit / Write / MultiEdit / NotebookEdit の前 | 対象が `~/ghq` 配下の main clone 本体なら拒否し、`EnterWorktree` へ案内する。linked worktree はどこにあっても通す |
+| `create-worktree`       | `EnterWorktree`・subagent の worktree 隔離   | 既定の `.claude/worktrees/` 配下でなく、`gwq add` で `~/worktrees/<host>/<owner>/<repo>/<branch>` に作る          |
+
+`create-worktree` はブランチ名に worktree の名前をそのまま使い、同じブランチの worktree が既にあればそれを返す。
+作れなかったときは失敗として止まり、既定配置へ黙って落とさない。
+hook は Claude Code を通る操作にだけ効く。
+人間の手編集と、Claude が Bash で直接打つ `git worktree add` は対象外。
+
+auto memory は `autoMemoryEnabled: false` で全リポジトリ止める。
+必要なリポジトリだけ `.claude/settings.local.json` で ON にできる。
+
+### Haiku 固定の subagent
+
+判断を伴わない委任作業を、主セッションのモデルでなく Haiku に逃がすための 5 役。
+どの役も設計判断・提案・実装をせず、判断が要る状況では決めるべき事項を主セッションへ返す。
+`@scout` のように名指しでも起動できる。
+
+| 役                | 仕事                                                     | 返すもの                                       |
+| ----------------- | -------------------------------------------------------- | ---------------------------------------------- |
+| `scout`           | シンボル・ファイル・呼び出し元・設定の所在を探す         | `file:line` と抜粋                             |
+| `plan-questioner` | 計画や Issue 本文から、暗黙に決めることになる事項を拾う  | 質問の一覧(回答も提案も含まない)               |
+| `operator`        | test / lint / typecheck などの決まったコマンドを実行する | 終了コードと失敗箇所の要約                     |
+| `diff-checker`    | 差分と完了条件を突き合わせる                             | 条件ごとの対応表と、範囲外の変更               |
+| `refuter`         | レビュー指摘 1 件を崩す根拠を探す                        | 「反証」か「反証できず」と決め手の `file:line` |
+
+同名の定義がプロジェクトの `.claude/agents/` にあればそちらが優先される。
 
 ### 配色の流れ
 
@@ -133,6 +170,7 @@ mise-dotfiles/
 ├── install.sh          curl の入口。clone と mise の導入
 ├── bin/
 │   ├── git-setup.ts    commit / push できる状態にする任意タスク
+│   ├── claude-settings.ts  ~/.claude/settings.json へ管理キーをマージ書き込みする
 │   └── lib/
 │       ├── palette.sh  Panda 配色の単一ソース
 │       ├── palette.ts  palette.sh を TypeScript から読み込む
@@ -148,9 +186,14 @@ mise-dotfiles/
 │   ├── starship.toml   プロンプト
 │   └── palette.test.ts [vars] と palette.sh の一致検査
 ├── claude/
-│   └── rules/          Claude Code が全プロジェクトで読む規約群
-│       ├── japanese-writing.md  日本語の文章規範(常時)
-│       └── typescript.md        コーディング規約(.ts を触るときだけ)
+│   ├── rules/          Claude Code が全プロジェクトで読む規約群
+│   │   ├── japanese-writing.md  日本語の文章規範(常時)
+│   │   └── typescript.md        コーディング規約(.ts を触るときだけ)
+│   ├── agents/         Haiku 固定の役割限定 subagent(~/.claude/agents から symlink)
+│   └── hooks/          Claude Code の hook 本体(~/.claude/hooks から symlink)
+│       ├── block-main-clone-edit.ts  main clone 本体の編集を拒否する
+│       ├── create-worktree.ts        EnterWorktree の worktree を gwq の規約の場所に作る
+│       └── lib/                      stdin の読み取りと git の判定
 ├── .claude/
 │   ├── rules/          このリポジトリだけで読む規約群
 │   └── skills/         このリポジトリだけで使うスキル群
