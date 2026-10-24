@@ -21,7 +21,7 @@ mise run git-setup
 ```
 
 このリポジトリで管理しているツールと設定を PC に適用する。
-実行後に開いた端末からは、パス無しの `mise` が使える。
+実行後に開いた端末は fish がログインシェルになり、パス無しの `mise` が使える。
 
 ```sh
 mise run setup
@@ -71,13 +71,14 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 | `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                            |
 | tig・cask 5 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / obsidian / coderabbit / JetBrains Mono Nerd Font)                                  |
 | macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映 |
-| `~/.zprofile`                                                               | `~/.local/bin` を PATH へ通す行と、mise の shims を有効にする行                                                                          |
-| `~/.zshrc`                                                                  | mise を有効にする行                                                                                                                      |
+| fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                  |
+| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。Homebrew と `~/.local/bin` の PATH、mise と starship の活性化                                    |
 | Bun / node                                                                  | `[tools]` から入れる                                                                                                                     |
 | agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                       |
 | Chrome for Testing                                                          | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                                         |
 
-shell の rc ファイルへの書き込みは `# >>> mise:... >>>` のマーカーで囲んだ行だけを mise が管理し、それ以外の行には触れない。
+シェルは fish に寄せる。zsh の設定は管理せず、zsh の startup file にも書かない。
+ログインシェルの変更は新しいターミナルから効く。
 Homebrew の formula が要るときは `[bootstrap.packages]` に `"brew:<formula>" = "latest"` と書く。
 mise が bottle を `/opt/homebrew` へ直接置くので Homebrew CLI は要らず、既に Homebrew がある端末ではその formula として共存する。
 
@@ -139,6 +140,7 @@ mise-dotfiles/
 │       ├── ui.sh       install.sh の表示部品
 │       └── ui.ts       TypeScript タスクの表示と対話部品
 ├── config/             ツール設定(~/.config 配下へ symlink / Tera 描画)
+│   ├── fish/           fish の設定(PATH・mise・starship の活性化)
 │   ├── git/            共有設定・hooks(Conventional Commits、機密語、secretlint)・ignore
 │   ├── tmux/           tmux.conf と popup スクリプト(jump / cheatsheet / split-even)
 │   ├── nvim/           Neovim(lazy.nvim)
