@@ -2,6 +2,7 @@
 paths:
   - "bin/**/*.ts"
   - "claude/hooks/**/*.ts"
+  - "claude/statusline/**/*.ts"
   - "claude/skills/**/*.ts"
 ---
 

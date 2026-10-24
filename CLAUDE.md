@@ -52,11 +52,11 @@ flag ファイルを手で書いて迂回しない。
 
 ## Claude Code の設定管理
 
-`claude/rules`・`claude/hooks`・`claude/agents` は `~/.claude` 配下へ symlink する。
+`claude/rules`・`claude/hooks`・`claude/agents`・`claude/statusline` は `~/.claude` 配下へ symlink する。
 `claude/skills` は `~/.claude/skills/<skill>/` 配下へファイルごとに symlink する。`~/.claude/skills` には Claude Code が `synced/` を作るため。
 `~/.claude/settings.json` は Claude Code 自身が `/config` の値を書くため symlink にしない。
 `bin/claude-settings.ts` が管理キーだけをマージ書き込みする。
-管理キーは `~/.claude/hooks` を指す hook の登録と `autoMemoryEnabled` だけで、それ以外には触れない。
+管理キーは `~/.claude/hooks` を指す hook の登録と `autoMemoryEnabled`・`statusLine` だけで、それ以外には触れない。
 Claude Code が自動生成するファイル・ディレクトリは symlink 管理に含めない。
 
 ## subagent の使い分け

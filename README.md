@@ -64,22 +64,23 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 `mise bootstrap --yes` を実行し、`mise.toml` の宣言どおりにツールと設定を適用する。
 既に済んでいる項目は飛ばすので、何度実行しても同じ結果になり、2 度目からは sudo と対話が発生しない。
 
-| 対象                                                                        | 内容                                                                                                                                      |
-| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                   |
-| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                     |
-| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない              |
-| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                          |
-| `~/.claude/skills/<skill>/`                                                 | `claude/skills/` の各ファイルへの個別の symlink(テストは除く)。Claude Code が `synced/` を置くので、ディレクトリは実体のまま              |
-| `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                              |
-| `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                             |
-| tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む |
-| macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映  |
-| fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                   |
-| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。Homebrew と `~/.local/bin` の PATH、mise と starship の活性化                                     |
-| Bun / node                                                                  | `[tools]` から入れる                                                                                                                      |
-| agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                        |
-| Chrome for Testing                                                          | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                                          |
+| 対象                                                                        | 内容                                                                                                                                       |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                    |
+| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                      |
+| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`・`statusLine`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない |
+| `~/.claude/statusline`                                                      | `claude/statusline` への symlink。ステータスラインの描画スクリプト                                                                         |
+| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                           |
+| `~/.claude/skills/<skill>/`                                                 | `claude/skills/` の各ファイルへの個別の symlink(テストは除く)。Claude Code が `synced/` を置くので、ディレクトリは実体のまま               |
+| `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                               |
+| `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                              |
+| tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む  |
+| macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映   |
+| fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                    |
+| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。Homebrew と `~/.local/bin` の PATH、mise と starship の活性化                                      |
+| Bun / node                                                                  | `[tools]` から入れる                                                                                                                       |
+| agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                         |
+| Chrome for Testing                                                          | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                                           |
 
 シェルは fish に寄せる。zsh の設定は管理せず、zsh の startup file にも書かない。
 ログインシェルの変更は新しいターミナルから効く。
@@ -186,6 +187,32 @@ git 外・差分の起点の不明・送るコミット無し・入力の解析�
 
 flag の発行は Claude 自身が行うので、ゲートは手順を飛ばさないための仕組みで、改ざんへの防御ではない。
 
+### Claude Code のステータスライン
+
+`claude/statusline/statusline.ts` が、Claude Code から stdin で受けた JSON を 1 行に描画する。
+
+```text
+Opus │ ctx ⣦        8% │ 5h ⣿⣷       24% 3h05m │ 7d ⣿⣿⣿⣄     41% 5d3h │ ⎇ feat/statusline │ wt feat-statusline │ PR #1234 pending
+```
+
+| 区画        | 出どころ                                               | 無いとき                         |
+| ----------- | ------------------------------------------------------ | -------------------------------- |
+| モデル名    | `model.display_name`                                   | 省く                             |
+| `ctx`       | `context_window.used_percentage`                       | 省く(セッション開始直後は null)  |
+| `5h` / `7d` | `rate_limits.*`(使用率とリセットまでの残り時間)        | 省く(Pro / Max 以外・初回応答前) |
+| `⎇`         | `git symbolic-ref`(detached HEAD は短縮 SHA)           | 省く(git 外・500ms で打ち切り)   |
+| `wt`        | `workspace.git_worktree`                               | 省く(main clone)                 |
+| `PR`        | `pr.number` と `pr.review_state`。番号は PR へのリンク | 省く(open PR が無いブランチ)     |
+
+バーと使用率の色は `palette.sh` から読み、0〜50% を mint から orange、50〜80% を orange から red へ補間する。
+80% 以上は red。
+`COLUMNS` より長くなるときは区画の切れ目で折り返す。
+`NO_COLOR` を設定すると色とリンクを付けない。
+stdin が JSON でなくても 0 で終わり、その旨を 1 行で出す。
+
+`statusLine` は管理キーなので、`/statusline` で書き換えた値は `mise run setup` の再実行で戻る。
+変えたいときは `claude/statusline/statusline.ts` を編集する。
+
 ### Haiku 固定の subagent
 
 判断を伴わない委任作業を、主セッションのモデルでなく Haiku に逃がすための 5 役。
@@ -272,6 +299,7 @@ mise-dotfiles/
 │   │   ├── japanese-writing.md  日本語の文章規範(常時)
 │   │   └── typescript.md        コーディング規約(.ts を触るときだけ)
 │   ├── agents/         Haiku 固定の役割限定 subagent(~/.claude/agents から symlink)
+│   ├── statusline/     ステータスラインの描画スクリプト(~/.claude/statusline から symlink)
 │   ├── skills/         personal skill(~/.claude/skills/<skill>/ へファイルごとに symlink)
 │   │   └── review-gate/  push 前レビューの手順と、flag を発行する review-flag.ts
 │   └── hooks/          Claude Code の hook 本体(~/.claude/hooks から symlink)

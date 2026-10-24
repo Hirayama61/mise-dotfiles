@@ -49,6 +49,13 @@ describe("mergeSettings", () => {
     test("autoMemoryEnabled を false にする", () => {
       expect(merged.autoMemoryEnabled).toBe(false);
     });
+
+    test("statusLine に ~/.claude/statusline の描画スクリプトを bun の絶対パスで登録する", () => {
+      expect(merged.statusLine).toEqual({
+        type: "command",
+        command: expect.stringMatching(/^"\/.+" "\$HOME\/\.claude\/statusline\/statusline\.ts"$/),
+      });
+    });
   });
 
   describe("端末ローカルの値と人間の hook 登録がある settings を受けたとき", () => {
@@ -94,6 +101,14 @@ describe("mergeSettings", () => {
       expect(commandsOf(merged, "PreToolUse")).not.toContainEqual(
         expect.stringContaining("removed-hook.ts"),
       );
+    });
+
+    test("/statusline が書いた statusLine は管理対象で置き換える", () => {
+      const replaced = mergeSettings({
+        ...current,
+        statusLine: { type: "command", command: "~/.claude/statusline.sh" },
+      });
+      expect(replaced.statusLine).toEqual(merged.statusLine);
     });
 
     test("autoMemoryEnabled は true でも false に揃える", () => {
