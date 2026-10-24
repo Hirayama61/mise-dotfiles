@@ -67,6 +67,7 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 | 対象               | 内容                                                                                             |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
 | `~/.claude/rules`  | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                          |
+| `~/.claude/agents` | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                 |
 | `~/.zprofile`      | `~/.local/bin` を PATH へ通す行と、mise の shims を有効にする行                                  |
 | `~/.zshrc`         | mise を有効にする行                                                                              |
 | Bun / node         | `[tools]` から入れる                                                                             |
@@ -79,6 +80,22 @@ mise が bottle を `/opt/homebrew` へ直接置くので Homebrew CLI は要ら
 
 `agent-browser` は `/create-issue` が ChatGPT の共有チャットを読むために使う。
 共有ページの本文はクライアント側で描画されるため、HTML を取るだけでは読めない。
+
+### Haiku 固定の subagent
+
+判断を伴わない委任作業を、主セッションのモデルでなく Haiku に逃がすための 5 役。
+どの役も設計判断・提案・実装をせず、判断が要る状況では決めるべき事項を主セッションへ返す。
+`@scout` のように名指しでも起動できる。
+
+| 役                | 仕事                                                     | 返すもの                                       |
+| ----------------- | -------------------------------------------------------- | ---------------------------------------------- |
+| `scout`           | シンボル・ファイル・呼び出し元・設定の所在を探す         | `file:line` と抜粋                             |
+| `plan-questioner` | 計画や Issue 本文から、暗黙に決めることになる事項を拾う  | 質問の一覧(回答も提案も含まない)               |
+| `operator`        | test / lint / typecheck などの決まったコマンドを実行する | 終了コードと失敗箇所の要約                     |
+| `diff-checker`    | 差分と完了条件を突き合わせる                             | 条件ごとの対応表と、範囲外の変更               |
+| `refuter`         | レビュー指摘 1 件を崩す根拠を探す                        | 「反証」か「反証できず」と決め手の `file:line` |
+
+同名の定義がプロジェクトの `.claude/agents/` にあればそちらが優先される。
 
 ## 開発
 
@@ -125,9 +142,10 @@ mise-dotfiles/
 │       ├── ui.sh       install.sh の表示部品
 │       └── ui.ts       TypeScript タスクの表示と対話部品
 ├── claude/
-│   └── rules/          Claude Code が全プロジェクトで読む規約群
-│       ├── japanese-writing.md  日本語の文章規範(常時)
-│       └── typescript.md        コーディング規約(.ts を触るときだけ)
+│   ├── rules/          Claude Code が全プロジェクトで読む規約群
+│   │   ├── japanese-writing.md  日本語の文章規範(常時)
+│   │   └── typescript.md        コーディング規約(.ts を触るときだけ)
+│   └── agents/         Haiku 固定の役割限定 subagent(~/.claude/agents から symlink)
 ├── .claude/
 │   ├── rules/          このリポジトリだけで読む規約群
 │   └── skills/         このリポジトリだけで使うスキル群

@@ -17,6 +17,8 @@ node = "lts"
 
 [dotfiles]
 "~/.claude/rules" = "claude/rules"
+# Haiku 固定の役割限定 subagent。同名の定義がプロジェクトの .claude/agents にあればそちらが優先される。
+"~/.claude/agents" = "claude/agents"
 # mise は ~/.local/bin に入るが、素の macOS ではそこが PATH に無い。
 # 下の shell activation が書く eval "$(mise activate zsh)" は裸の mise を呼ぶので、
 # 同じ ~/.zprofile の先頭側で PATH へ通す。dotfiles は shell activation より先に適用される。
