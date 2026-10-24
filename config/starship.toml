@@ -1,0 +1,51 @@
+# Starship prompt configuration
+# Reference: https://starship.rs/config/
+#
+# 方針:
+# - 言語バージョン系は一切表示しない(format に含めない)
+# - ディレクトリは basename のみ(tmux pane border で full path 表示しているため)
+# - 構造はテキスト完結のまま。配色のみ Panda palette に統一
+
+palette = "panda"
+
+[palettes.panda]
+# 配色は mise.toml の [vars] から Tera で展開(単一ソースは bin/lib/palette.sh)。
+# 暗背景(#242526)で沈む blue/purple/gray は意図的ライト変種(*_lift)を参照。
+# 値はリネーム前と同一 = 見た目は不変。
+pink = "{{ vars.panda_pink }}"
+mint = "{{ vars.panda_mint }}"
+blue = "{{ vars.panda_blue_lift }}"
+orange = "{{ vars.panda_orange }}"
+purple = "{{ vars.panda_purple_lift }}"
+gray = "{{ vars.panda_gray_lift }}"
+red = "{{ vars.panda_red }}"
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$cmd_duration\
+$line_break\
+$character"""
+
+[directory]
+truncation_length = 1
+truncation_symbol = ""
+style = "blue"
+
+[git_branch]
+format = "[$branch]($style) "
+style = "purple"
+
+[git_status]
+format = '([\[$all_status$ahead_behind\]]($style) )'
+style = "orange"
+
+[cmd_duration]
+min_time = 2000
+format = "[$duration]($style) "
+style = "gray"
+
+[character]
+success_symbol = "[❯](mint)"
+error_symbol = "[❯](red)"

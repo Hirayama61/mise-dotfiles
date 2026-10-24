@@ -1,0 +1,143 @@
+#!/usr/bin/env zsh
+# tmux popup から worktree / ghq repo を fzf で選び、呼び出し元 pane で cd(Enter)か新 window(C-s)で開く。
+# tmux bind: prefix+T (worktree) / prefix+G (repo)。
+#
+# 旧 zsh ZLE widget(^g^g / ^g^w)を tmux に一本化したもの。ZLE はシェルのプロンプト専用だが
+# tmux prefix は TUI(Claude Code 等)実行中でも効くので、どの画面からでも呼べる(これが寄せた理由)。
+#
+# popup はあくまで finder の見た目。選択した瞬間に popup は閉じ(display-popup -E)、Enter は
+# 呼び出し元 pane に cd を送り、C-s は実体の新 window を開く(tmux popup は pane に昇格できないため)。
+#
+# 表示は host/owner/repo(/branch)のフルパスを 1 行 1 件のフラット列で出す。プレフィックス
+# (host/owner/repo)を淡色・末尾の leaf(repo or branch)を明色にし、sort で同一 group を隣接させる。
+# fzf 0.73 で --nth は --with-nth 適用後の列を指す(隠し検索列が作れない)。検索対象は必ず表示列に
+# 入れる必要があるため、表示列そのもの(色付きフルパス)を検索する。旧 ├─/└─ tree は検索したい
+# group/repo が leaf 行の隠し列にしか無く fzf 0.73 で全件マッチ不能になったのでフラット化した。
+#
+# 各行 = "色付きフルパス<TAB>絶対パス"。--with-nth=1 で表示・--nth=1 で検索(色は --ansi が剥がすので
+# host/owner/repo/leaf 全体に一致)・{2}/target に path。色は Panda(tmux.conf の @panda_* から読む)。
+
+emulate -L zsh
+set -o pipefail
+
+local mode=$1
+[[ $mode == worktree || $mode == repo ]] || {
+  print -u2 "usage: jump.zsh worktree|repo"
+  exit 1
+}
+# popup は FZF_DEFAULT_OPTS 同様 PATH も継がない場合がある。fzf 不在を早期に知らせる(無言終了を防ぐ)。
+command -v fzf >/dev/null 2>&1 || {
+  tmux display-message "jump.zsh: fzf が見つかりません(popup の PATH を確認)"
+  exit 1
+}
+
+# 宣言は 1 回に集約する。このスクリプトは関数でなくトップレベル実行のため、`local` で同名変数を
+# 再宣言すると既存値を `name=value` で表示してしまう(zsh 仕様)。以降は代入のみにする。
+local R C_DIM C_LEAF base d p r rel best g lf e leaf pth rest disp preview out key sel target listing src_pane
+local -a entries lines leaves pending parts roots sorted
+
+# tmux は binding/popup 実行コマンドに呼び出し元 pane を $TMUX_PANE で渡す。これを使えば
+# display-message の既定ターゲット(実行時 active pane=別クライアント操作で変わりうる)に依存せず
+# Enter 時に -t で確実に呼び出し元へ cd を送れる。未設定の保険として display を残す。
+src_pane=${TMUX_PANE:-$(tmux display-message -p '#{pane_id}')}
+
+# Panda 配色は tmux.conf が @panda_* オプションに書いたものを読む(popup は FZF_DEFAULT_OPTS を継がない場合があるので明示する)。
+panda() { tmux show-option -gqv "@panda_$1"; }
+hex2rgb() {
+  local h=${1#\#}
+  printf '%d;%d;%d' "0x${h:0:2}" "0x${h:2:2}" "0x${h:4:2}"
+}
+R=$'\e[0m'
+C_DIM=$'\e[38;2;'"$(hex2rgb "$(panda subtle)")"'m'
+[[ $mode == worktree ]] && C_LEAF=$'\e[38;2;'"$(hex2rgb "$(panda mint)")"'m' || C_LEAF=$'\e[38;2;'"$(hex2rgb "$(panda cyan)")"'m'
+
+# --- 候補生成: entries に "group<TAB>leaf<TAB>path" を積む ---
+if [[ $mode == worktree ]]; then
+  # ~/worktrees の生 FS を BFS。.git を持つ dir = worktree root で降下を止める(node_modules 等を走査しない)。
+  base=$HOME/worktrees
+  pending=($base/*/*/*(/N))
+  while ((${#pending})); do
+    d=$pending[1]
+    shift pending
+    if [[ -e $d/.git ]]; then leaves+=($d); else pending+=($d/*(/N)); fi
+  done
+  ((${#leaves})) || {
+    tmux display-message "worktree が見つかりません ($base)"
+    exit 0
+  }
+  for p in $leaves; do
+    rel=${p#$base/}
+    parts=("${(@s:/:)rel}")
+    entries+=("${(j:/:)parts[1,3]}"$'\t'"${(j:/:)parts[4,-1]}"$'\t'"$p") # group=host/owner/repo, leaf=branch
+  done
+else
+  # ghq list -p の絶対パスから ghq root(最長一致)を剥がし、相対パスの親ディレクトリでグループ化(通常 host/owner、gitlab subgroup 等は深くなる)。複数 root 対応。
+  listing=$(ghq list -p) || {
+    tmux display-message "ghq list に失敗しました"
+    exit 1
+  }
+  [[ -n $listing ]] || {
+    tmux display-message "ghq リポジトリが見つかりません"
+    exit 1
+  }
+  roots=(${(f)"$(ghq root --all 2>/dev/null)"})
+  ((${#roots})) || roots=("$(ghq root)")
+  for p in ${(f)listing}; do
+    best=""
+    for r in $roots; do [[ $p == $r/* && ${#r} -gt ${#best} ]] && best=$r; done
+    rel=$p
+    [[ -n $best ]] && rel=${p#$best/}
+    g=${rel%/*}
+    lf=${rel##*/}
+    [[ $g == $rel ]] && g="" # slash 無し(root 直下 repo)は親なし
+    entries+=("$g"$'\t'"$lf"$'\t'"$p")
+  done
+fi
+
+# --- flat 描画: 各行 = 色付きフルパス(g を淡色プレフィックス + leaf を明色)。sort で同一 group が隣接する ---
+sorted=(${(o)entries})
+for e in $sorted; do
+  g=${e%%$'\t'*}
+  rest=${e#*$'\t'}
+  leaf=${rest%%$'\t'*}
+  pth=${rest#*$'\t'}
+  if [[ -n $g ]]; then
+    disp="${C_DIM}${g}/${R}${C_LEAF}${leaf}${R}"
+  else
+    disp="${C_LEAF}${leaf}${R}" # 親なし(root 直下 repo)は leaf のみ
+  fi
+  lines+=("$disp"$'\t'"$pth")
+done
+
+# --- preview({2}=path は fzf が単引用符化済)。念のため空なら即終了 ---
+if [[ $mode == worktree ]]; then
+  preview='[ -n {2} ] || exit 0; git -C {2} log -n 20 --color=always --date=relative --pretty=format:"%C(green)%<(14,trunc)%ad%C(reset) %C(cyan)%<(14,trunc)%an%C(reset) %s" 2>/dev/null; echo; echo; git -C {2} -c color.status=always status -sb 2>/dev/null'
+else
+  preview='[ -n {2} ] || exit 0; bat --color=always --style=header,grid --line-range :80 {2}/README.md 2>/dev/null && echo; eza --icons --color=always --tree --level=2 {2} 2>/dev/null || ls -la {2}'
+fi
+
+# --- fzf: Enter=呼び出し元 pane で cd / C-s=新 window。表示=色付き(--ansi)・検索=1 列目(色付きフルパス)・UI 配色=Panda ---
+out=$(
+  print -rl -- $lines | fzf --layout=reverse --ansi \
+    --delimiter='\t' --with-nth=1 --nth=1 \
+    --color="fg:$(panda fg),bg:-1,hl:$(panda cyan),fg+:$(panda white),bg+:$(panda selection),hl+:$(panda cyan),info:$(panda subtle),prompt:$(panda mint),pointer:$(panda pink),marker:$(panda orange),spinner:$(panda purple_lift),header:$(panda subtle),border:$(panda selection)" \
+    --expect=ctrl-s \
+    --header='enter=この pane へ cd   C-s=新規 window' \
+    --preview "$preview" --preview-window=right,60%
+) || exit 0
+[[ -n $out ]] || exit 0
+key=${out%%$'\n'*}    # "" (enter) または "ctrl-s"
+sel=${out#*$'\n'}     # 選択行(表示<TAB>path)
+target=${sel##*$'\t'} # 末尾列 = 絶対パス
+[[ -n $target ]] || exit 0
+
+# -c は新規 window/pane の初期 cwd 専用で実行中シェルの cwd は変えられない。呼び出し元 pane が
+# シェルプロンプトのとき限定で cd を打ち込み(space 等は ${(q)} でクォート)、vim/Claude 等の TUI
+# 前面なら誤入力になるため新 window へ退避する(prefix がどの画面からでも効く性質を保つ)。
+if [[ $key == ctrl-s ]]; then
+  tmux new-window -c "$target"
+elif [[ "$(tmux display-message -p -t "$src_pane" '#{pane_current_command}')" == (zsh|bash|fish|sh) ]]; then
+  tmux send-keys -t "$src_pane" "cd ${(q)target}" Enter
+else
+  tmux new-window -c "$target"
+fi
