@@ -44,9 +44,16 @@ Claude は main clone(`~/ghq` 配下のプライマリ作業ツリー)を編集�
 force push・保護ブランチでの push / merge・未コミット作業の破棄などは `block-irreversible-git` hook が止める。
 止められたら書き方を変えて迂回しない。コマンドを人間に示し、`!` での実行を頼む。
 
+## push 前レビュー
+
+`git push` が `[review-gate]` で止められたら、`review-gate` skill の手順で flag を得る。
+`/code-review` は人間に実行を頼み、Claude からは起動しない。
+flag ファイルを手で書いて迂回しない。
+
 ## Claude Code の設定管理
 
-`claude/rules` と `claude/hooks` は `~/.claude` 配下へ symlink する。
+`claude/rules`・`claude/hooks`・`claude/agents` は `~/.claude` 配下へ symlink する。
+`claude/skills` は `~/.claude/skills/<skill>/` 配下へファイルごとに symlink する。`~/.claude/skills` には Claude Code が `synced/` を作るため。
 `~/.claude/settings.json` は Claude Code 自身が `/config` の値を書くため symlink にしない。
 `bin/claude-settings.ts` が管理キーだけをマージ書き込みする。
 管理キーは `~/.claude/hooks` を指す hook の登録と `autoMemoryEnabled` だけで、それ以外には触れない。
