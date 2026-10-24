@@ -13,7 +13,7 @@ const miseBin = process.env.MISE_BIN ?? "mise";
  * @param output - --version の出力。取得できなかった場合は null。
  * @returns バージョン文字列。取り出せなければ空文字。
  */
-const parseToolVersion = (output: string | null): string =>
+export const parseToolVersion = (output: string | null): string =>
   output?.split("\n")[0]?.split(/\s+/)[2] ?? "";
 
 /**
@@ -112,7 +112,7 @@ const askUntilAnswered = async (ui: Ui, label: string, defaultValue: string): Pr
  *
  * @returns 書き先のパス。
  */
-const globalGitConfigPath = (): string => {
+export const globalGitConfigPath = (): string => {
   const override = process.env.GIT_CONFIG_GLOBAL;
   if (override) {
     return override;

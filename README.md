@@ -248,15 +248,19 @@ tig と ghostty のテーマは端末の ANSI 16 色で表すため静的ファ�
 mise run check
 ```
 
-`mise run check` が回す検証は 5 つ。
+`mise run check` が回す検証は 6 つ。
 
-| ツール            | 対象                         | 内容              |
-| ----------------- | ---------------------------- | ----------------- |
-| oxfmt             | TypeScript / JSON / Markdown | 整形              |
-| oxlint            | TypeScript                   | lint              |
-| tsc               | TypeScript                   | 型検査            |
-| markdownlint-cli2 | Markdown                     | 構造の lint       |
-| textlint          | Markdown                     | 日本語の文章 lint |
+| ツール            | 対象                            | 内容              |
+| ----------------- | ------------------------------- | ----------------- |
+| oxfmt             | TypeScript / JSON / Markdown    | 整形              |
+| oxlint            | TypeScript                      | lint              |
+| tsc               | TypeScript                      | 型検査            |
+| markdownlint-cli2 | Markdown                        | 構造の lint       |
+| textlint          | Markdown                        | 日本語の文章 lint |
+| bun test          | `bin/`・`claude/` の TypeScript | テスト            |
+
+テストだけを回すには `mise exec -- bun test` を使う。
+テストは対象の隣の `<対象>.test.ts` にあり、書き方と実機に残す範囲は `.claude/rules/testing.md` に従う。
 
 Bun は型を検査せず、型を落として実行するだけ。
 型エラーを見つけるには `tsc --noEmit` が要る。
@@ -280,6 +284,7 @@ mise-dotfiles/
 │   ├── git-setup.ts    commit / push できる状態にする任意タスク
 │   ├── claude-settings.ts  ~/.claude/settings.json へ管理キーをマージ書き込みする
 │   └── lib/
+│       ├── fixtures/   テストが子プロセスとして実行する入口
 │       ├── palette.sh  Panda 配色の単一ソース
 │       ├── palette.ts  palette.sh を TypeScript から読み込む
 │       ├── ui.sh       install.sh の表示部品
