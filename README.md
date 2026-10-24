@@ -64,17 +64,21 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 `mise bootstrap --yes` を実行し、`mise.toml` の宣言どおりにツールと設定を適用する。
 既に済んでいる項目は飛ばすので、何度実行しても同じ結果になり、2 度目からは sudo と対話が発生しない。
 
-| 対象                      | 内容                                                                                                                         |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `~/.claude/rules`         | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                      |
-| `~/.claude/hooks`         | `claude/hooks` への symlink。Claude Code の hook 本体                                                                        |
-| `~/.claude/settings.json` | 管理キー(hook の登録・`autoMemoryEnabled: false`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない |
-| `~/.claude/agents`        | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                             |
-| `~/.zprofile`             | `~/.local/bin` を PATH へ通す行と、mise の shims を有効にする行                                                              |
-| `~/.zshrc`                | mise を有効にする行                                                                                                          |
-| Bun / node                | `[tools]` から入れる                                                                                                         |
-| agent-browser             | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                           |
-| Chrome for Testing        | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                             |
+| 対象                                                                        | 内容                                                                                                                                     |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                  |
+| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                    |
+| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない             |
+| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                         |
+| `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                             |
+| `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                            |
+| tig・cask 5 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / obsidian / coderabbit / JetBrains Mono Nerd Font)                                  |
+| macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映 |
+| `~/.zprofile`                                                               | `~/.local/bin` を PATH へ通す行と、mise の shims を有効にする行                                                                          |
+| `~/.zshrc`                                                                  | mise を有効にする行                                                                                                                      |
+| Bun / node                                                                  | `[tools]` から入れる                                                                                                                     |
+| agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                       |
+| Chrome for Testing                                                          | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                                         |
 
 shell の rc ファイルへの書き込みは `# >>> mise:... >>>` のマーカーで囲んだ行だけを mise が管理し、それ以外の行には触れない。
 Homebrew の formula が要るときは `[bootstrap.packages]` に `"brew:<formula>" = "latest"` と書く。
@@ -116,6 +120,16 @@ auto memory は `autoMemoryEnabled: false` で全リポジトリ止める。
 | `refuter`         | レビュー指摘 1 件を崩す根拠を探す                        | 「反証」か「反証できず」と決め手の `file:line` |
 
 同名の定義がプロジェクトの `.claude/agents/` にあればそちらが優先される。
+
+### 配色の流れ
+
+`bin/lib/palette.sh` が Panda 配色の単一ソース。
+`mise.toml` の `[vars]` に同じ値を hex で持ち、`config/**` のテンプレートが `{{ vars.panda_<name> }}` で読む。
+両者のずれは `config/palette.test.ts` が `mise run check` で止める。
+tmux の補助スクリプト(`jump.zsh` / `cheatsheet.sh`)は `tmux.conf` が書く `@panda_*` オプションから色を読む。
+tig と ghostty のテーマは端末の ANSI 16 色で表すため静的ファイル。
+
+起動音を OFF にする `nvram` だけは defaults で書けないため、`mise run macos:startup-mute` に分けてある(sudo が要る)。
 
 ## 開発
 
@@ -162,6 +176,15 @@ mise-dotfiles/
 │       ├── palette.ts  palette.sh を TypeScript から読み込む
 │       ├── ui.sh       install.sh の表示部品
 │       └── ui.ts       TypeScript タスクの表示と対話部品
+├── config/             ツール設定(~/.config 配下へ symlink / Tera 描画)
+│   ├── git/            共有設定・hooks(Conventional Commits、機密語、secretlint)・ignore
+│   ├── tmux/           tmux.conf と popup スクリプト(jump / cheatsheet / split-even)
+│   ├── nvim/           Neovim(lazy.nvim)
+│   ├── ghostty/        Ghostty と Panda テーマ
+│   ├── tig/ gwq/       静的設定
+│   ├── mise/           mise のグローバル設定(どの cwd でも使うツール)
+│   ├── starship.toml   プロンプト
+│   └── palette.test.ts [vars] と palette.sh の一致検査
 ├── claude/
 │   ├── rules/          Claude Code が全プロジェクトで読む規約群
 │   │   ├── japanese-writing.md  日本語の文章規範(常時)

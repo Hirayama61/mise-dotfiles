@@ -6,3 +6,6 @@ node_modules
 
 # Finder (macOS)
 .DS_Store
+
+# lazy.nvim が ~/.config/nvim(= config/nvim への symlink)に書く
+config/nvim/lazy-lock.json
