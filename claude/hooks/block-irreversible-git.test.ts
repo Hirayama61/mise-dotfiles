@@ -97,6 +97,8 @@ beforeAll(() => {
   runGit(mainClone, ["worktree", "add", "-q", "-b", "feat-x", featureWorktree]);
   runGit(featureWorktree, ["commit", "-q", "--allow-empty", "-m", "feat: local"]);
 
+  mkdirSync(join(featureWorktree, "sub"));
+
   outsideGit = join(home, "plain");
   mkdirSync(outsideGit);
 });
@@ -148,6 +150,10 @@ describe("block-irreversible-git", () => {
 
     test("サブシェル内の cd は外へ漏らさず、後続の push を main で判定して deny する", () => {
       expectDenied(`(cd ${featureWorktree} && pwd); git push`, mainClone, "保護ブランチ main");
+    });
+
+    test("main へ switch してから同じ worktree のサブディレクトリへ cd した後の push は deny する", () => {
+      expectDenied("git switch main && cd sub && git push", featureWorktree, "保護ブランチ main");
     });
 
     test("先に main へ switch した後の merge は deny する", () => {
@@ -251,6 +257,16 @@ describe("block-irreversible-git", () => {
         expectAllowed(command, outsideGit);
       },
     );
+  });
+
+  describe("heredoc の本文にコマンドがあるとき", () => {
+    test("クォート無し heredoc の本文のコマンド置換は deny する", () => {
+      expectDenied("cat <<EOF\n$(git reset --hard)\nEOF", featureWorktree, "git reset --hard");
+    });
+
+    test("クォート付き heredoc の本文のコマンド置換は通す", () => {
+      expectAllowed("cat <<'EOF'\n$(git reset --hard)\nEOF", featureWorktree);
+    });
   });
 
   describe("誤検知しやすい形のとき", () => {

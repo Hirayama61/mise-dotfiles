@@ -91,6 +91,23 @@ describe("splitSimpleCommands", () => {
   });
 
   describe("heredoc・コメント・リダイレクトを含むとき", () => {
+    test("クォート無し heredoc の本文から、コマンド置換だけを取り出す", () => {
+      expect(wordsOf("cat <<EOF\ngit push -f $(git reset --hard) `git clean -f`\nEOF\nls")).toEqual(
+        [["cat"], ["git", "reset", "--hard"], ["git", "clean", "-f"], ["ls"]],
+      );
+    });
+
+    test.each(["<<'EOF'", '<<"EOF"', "<<\\EOF", "<<E'O'F"])(
+      "%s のように区切り語にクォートがあれば、本文のコマンド置換も読まない",
+      (opener) => {
+        expect(wordsOf(`cat ${opener}\n$(git reset --hard)\nEOF\nls`)).toEqual([["cat"], ["ls"]]);
+      },
+    );
+
+    test("クォート無し heredoc でも、エスケープした \\$( は置換として読まない", () => {
+      expect(wordsOf("cat <<EOF\n\\$(git reset --hard)\nEOF")).toEqual([["cat"]]);
+    });
+
     test("heredoc の本文を語に含めない", () => {
       expect(wordsOf("cat <<EOF > out\ngit push -f\nEOF\nls")).toEqual([["cat"], ["ls"]]);
     });

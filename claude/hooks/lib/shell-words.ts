@@ -1,6 +1,11 @@
 type RedirectTarget = "drop" | "heredoc" | "heredoc-dash";
 
-type Heredoc = { delimiter: string; stripTabs: boolean };
+type Heredoc = {
+  delimiter: string;
+  stripTabs: boolean;
+  /** 区切り語にクォートが無く、本文のコマンド置換が実行されるか。 */
+  expands: boolean;
+};
 
 /** 単純コマンド 1 つ。 */
 export type SimpleCommand = {
@@ -49,27 +54,31 @@ const doubleQuoteEscapable = '"\\$`\n';
 const commandSeparators = ";&|";
 
 /**
- * heredoc の本文を読み飛ばす。
+ * heredoc の本文の範囲を返す。
  *
  * @param source - コマンド全体。
- * @param start - 本文の先頭位置(heredoc を開いた行の次の行頭)。
- * @param heredocs - その行で開いた heredoc。開いた順に本文が並ぶ。
- * @returns 本文を読み終えた位置。終端行が無ければ末尾(bash も EOF までを本文とみなす)。
+ * @param start - 本文の先頭位置。
+ * @param heredoc - 読む heredoc。
+ * @returns 本文の終わり(終端行の行頭)と、終端行の次の位置。
+ *   終端行が無ければどちらも末尾(bash も EOF までを本文とみなす)。
  */
-const skipHeredocBodies = (source: string, start: number, heredocs: Heredoc[]): number => {
+const heredocBodyRange = (
+  source: string,
+  start: number,
+  heredoc: Heredoc,
+): { bodyEnd: number; next: number } => {
   let index = start;
-  for (const heredoc of heredocs) {
-    while (index < source.length) {
-      const newline = source.indexOf("\n", index);
-      const end = newline === -1 ? source.length : newline;
-      const line = source.slice(index, end);
-      index = newline === -1 ? source.length : newline + 1;
-      if ((heredoc.stripTabs ? line.replace(/^\t+/, "") : line) === heredoc.delimiter) {
-        break;
-      }
+  while (index < source.length) {
+    const newline = source.indexOf("\n", index);
+    const end = newline === -1 ? source.length : newline;
+    const line = source.slice(index, end);
+    const next = newline === -1 ? source.length : newline + 1;
+    if ((heredoc.stripTabs ? line.replace(/^\t+/, "") : line) === heredoc.delimiter) {
+      return { bodyEnd: index, next };
     }
+    index = next;
   }
-  return index;
+  return { bodyEnd: source.length, next: source.length };
 };
 
 /**
@@ -78,6 +87,7 @@ const skipHeredocBodies = (source: string, start: number, heredocs: Heredoc[]): 
  * `&&` / `||` / `;` / `|` / `&` / 改行 / 括弧で区切り、クォートを外した語にする。
  * コマンド置換(`$(...)` とバッククォート)の中身は、ダブルクォート内でも別の単純コマンドとして取り出す。
  * heredoc の本文・コメント・リダイレクト先はデータなので語に含めない。
+ * ただしクォート無しの区切り語で開いた heredoc は、本文のコマンド置換だけを取り出す。
  * 字句だけの best-effort で、alias・変数展開・`bash -c` の中身は解かない。
  *
  * @param source - Bash ツールに渡されたコマンド。
@@ -94,6 +104,8 @@ export const splitSimpleCommands = (source: string): SimpleCommand[] => {
     let words: string[] = [];
     let word = "";
     let inWord = false;
+    // 語のどこかにクォートかバックスラッシュがあったか。heredoc の区切り語で本文の展開が変わる。
+    let isWordQuoted = false;
     let target: RedirectTarget | null = null;
     let heredocs: Heredoc[] = [];
     let depth = 0;
@@ -103,12 +115,17 @@ export const splitSimpleCommands = (source: string): SimpleCommand[] => {
         return;
       }
       if (target === "heredoc" || target === "heredoc-dash") {
-        heredocs.push({ delimiter: word, stripTabs: target === "heredoc-dash" });
+        heredocs.push({
+          delimiter: word,
+          stripTabs: target === "heredoc-dash",
+          expands: !isWordQuoted,
+        });
       } else if (target === null) {
         words.push(word);
       }
       word = "";
       inWord = false;
+      isWordQuoted = false;
       target = null;
     };
 
@@ -160,7 +177,38 @@ export const splitSimpleCommands = (source: string): SimpleCommand[] => {
       scope.length = outerDepth;
     };
 
+    // クォート無し heredoc の本文。地の文はデータだが、$(...) とバッククォートは実行される。
+    const readHeredocExpansions = (bodyEnd: number): void => {
+      while (index < bodyEnd) {
+        const char = source[index] ?? "";
+        if (char === "\\") {
+          index += 2;
+        } else if (char === "$" && source[index + 1] === "(") {
+          index += 2;
+          readSubstitution(")");
+        } else if (char === "`") {
+          index += 1;
+          readSubstitution("`");
+        } else {
+          index += 1;
+        }
+      }
+    };
+
+    const readHeredocBodies = (): void => {
+      for (const heredoc of heredocs) {
+        const { bodyEnd, next } = heredocBodyRange(source, index, heredoc);
+        if (heredoc.expands) {
+          readHeredocExpansions(bodyEnd);
+        }
+        // 閉じていない置換が本文の外まで読み進んだときは戻らない。
+        index = Math.max(index, next);
+      }
+      heredocs = [];
+    };
+
     const readDoubleQuoted = (): void => {
+      isWordQuoted = true;
       index += 1;
       while (index < source.length && source[index] !== '"') {
         const char = source[index] ?? "";
@@ -190,8 +238,7 @@ export const splitSimpleCommands = (source: string): SimpleCommand[] => {
       if (char === "\n") {
         finishCommand();
         index += 1;
-        index = skipHeredocBodies(source, index, heredocs);
-        heredocs = [];
+        readHeredocBodies();
       } else if (char === " " || char === "\t") {
         finishWord();
         index += 1;
@@ -203,6 +250,7 @@ export const splitSimpleCommands = (source: string): SimpleCommand[] => {
         if (next !== "\n") {
           word += next;
           inWord = true;
+          isWordQuoted = true;
         }
         index += 2;
       } else if (char === "'") {
@@ -210,6 +258,7 @@ export const splitSimpleCommands = (source: string): SimpleCommand[] => {
         const end = close === -1 ? source.length : close;
         word += source.slice(index + 1, end);
         inWord = true;
+        isWordQuoted = true;
         index = end + 1;
       } else if (char === '"') {
         readDoubleQuoted();
