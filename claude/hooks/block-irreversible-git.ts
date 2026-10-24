@@ -1,9 +1,10 @@
+import { statSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
 import { git } from "./lib/git.ts";
 import { denyToolUse, readHookInput } from "./lib/hook-input.ts";
-import { splitSimpleCommands, stripCommandPrefix } from "./lib/shell-words.ts";
+import { type SimpleCommand, splitSimpleCommands, stripCommandPrefix } from "./lib/shell-words.ts";
 
 /** 止める理由。Claude に見せる文面の部品。 */
 type Block = {
@@ -21,6 +22,8 @@ type ParsedArgs = {
   /** `--` 始まりのオプション名。`=` 以降は含まない。 */
   longs: ReadonlySet<string>;
   positionals: readonly string[];
+  /** 値を取るオプションの値。キーは `-c` や `--create` のように書かれた形。 */
+  values: ReadonlyMap<string, string>;
   hasDoubleDash: boolean;
 };
 
@@ -28,6 +31,9 @@ type ParsedArgs = {
 type OptionSpec = { shortsWithValue: string; longsWithValue: readonly string[] };
 
 type GitInvocation = { dir: string; subcommand: string; args: ParsedArgs };
+
+/** git の作業ディレクトリから、その時点の現在ブランチを返す。不明は null。 */
+type BranchLookup = (dir: string) => string | null;
 
 type GhInvocation = { group: string; action: string };
 
@@ -100,6 +106,12 @@ const optionSpecs: Record<string, OptionSpec> = {
   },
 };
 
+// 新しいブランチを作って切り替えるオプション。値が切り替え先のブランチ名になる。
+const branchCreateOptions: Record<string, readonly string[]> = {
+  switch: ["-c", "-C", "--create", "--force-create", "--orphan"],
+  checkout: ["-b", "-B", "--orphan"],
+};
+
 const noValueSpec: OptionSpec = { shortsWithValue: "", longsWithValue: [] };
 
 const blockedGhActions: Record<string, ReadonlySet<string>> = {
@@ -115,6 +127,7 @@ const parseArgs = (args: readonly string[], spec: OptionSpec): ParsedArgs => {
   const shorts = new Set<string>();
   const longs = new Set<string>();
   const positionals: string[] = [];
+  const values = new Map<string, string>();
   let hasDoubleDash = false;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] ?? "";
@@ -125,8 +138,11 @@ const parseArgs = (args: readonly string[], spec: OptionSpec): ParsedArgs => {
     } else if (arg.startsWith("--")) {
       const name = arg.split("=", 1)[0] ?? arg;
       longs.add(name);
-      if (!arg.includes("=") && spec.longsWithValue.includes(name)) {
+      if (arg.includes("=")) {
+        values.set(name, arg.slice(name.length + 1));
+      } else if (spec.longsWithValue.includes(name)) {
         index += 1;
+        values.set(name, args[index] ?? "");
       }
     } else if (arg.startsWith("-") && arg.length > 1) {
       // `-am msg` の m 以降は値。`-mfix` のように値が続けて書かれた形もここで打ち切る。
@@ -134,7 +150,9 @@ const parseArgs = (args: readonly string[], spec: OptionSpec): ParsedArgs => {
         const char = arg[at] ?? "";
         shorts.add(char);
         if (spec.shortsWithValue.includes(char)) {
-          index += at === arg.length - 1 ? 1 : 0;
+          const attached = arg.slice(at + 1);
+          index += attached === "" ? 1 : 0;
+          values.set(`-${char}`, attached === "" ? (args[index] ?? "") : attached);
           break;
         }
       }
@@ -142,7 +160,7 @@ const parseArgs = (args: readonly string[], spec: OptionSpec): ParsedArgs => {
       positionals.push(arg);
     }
   }
-  return { shorts, longs, positionals, hasDoubleDash };
+  return { shorts, longs, positionals, values, hasDoubleDash };
 };
 
 const hasOption = (args: ParsedArgs, long: string, short = ""): boolean =>
@@ -211,6 +229,31 @@ const isForcePush = (args: ParsedArgs): boolean =>
 // ref 名としても妥当な `src/main.ts` のような形は区別できないので通す。
 const looksLikePathspec = (arg: string): boolean =>
   /^[./~]/.test(arg) || arg.endsWith("/") || /[*?]/.test(arg);
+
+/**
+ * switch / checkout が切り替える先のブランチを返す。
+ *
+ * 新規作成(`-c` / `-b` など)はその名前、`--detach` は空文字(どのブランチでもない)。
+ * 直前のブランチを指す `-` は字句では決まらないので `-` のまま返す。
+ *
+ * @param subcommand - git のサブコマンド。
+ * @param args - サブコマンドの引数。
+ * @returns 切り替え先。ブランチを切り替えないコマンドなら null。
+ */
+const switchedBranch = (subcommand: string, args: ParsedArgs): string | null => {
+  const createOptions = branchCreateOptions[subcommand];
+  if (createOptions === undefined || args.hasDoubleDash) {
+    return null;
+  }
+  const created = createOptions.map((option) => args.values.get(option)).find(Boolean);
+  if (created !== undefined) {
+    return created;
+  }
+  if (args.longs.has("--detach")) {
+    return "";
+  }
+  return args.positionals[0] ?? null;
+};
 
 /**
  * 文脈を見ずに字句だけで決まる git の遮断。
@@ -311,18 +354,46 @@ const denyReason = ({ operation, why, instead }: Block): string =>
   ].join("\n");
 
 /**
+ * 単純コマンドの作業ディレクトリを返す。
+ *
+ * サブシェル内の cd は外へ漏れないので、経路が接頭辞になっているスコープの cd だけを見る。
+ *
+ * @param dirsByScope - スコープの経路(`,` 区切り)ごとの、そこまでの cd の結果。
+ * @param command - 対象の単純コマンド。
+ * @param cwd - セッションの作業ディレクトリ。
+ * @returns 最も内側のスコープで最後に cd した先。cd が無ければ cwd。
+ */
+const dirOfCommand = (
+  dirsByScope: ReadonlyMap<string, string>,
+  { scope }: SimpleCommand,
+  cwd: string,
+): string => {
+  for (let length = scope.length; length >= 0; length -= 1) {
+    const dir = dirsByScope.get(scope.slice(0, length).join(","));
+    if (dir !== undefined) {
+      return dir;
+    }
+  }
+  return cwd;
+};
+
+/**
  * 現在ブランチと HEAD の push 状況を見て決まる git の遮断。
  *
  * git 外・detached HEAD・コミットが無いなど判定できないときは止めない。
  *
  * @param invocation - 解釈済みの git コマンド。
+ * @param branchOf - 同じコマンド内の switch / checkout を反映した現在ブランチ。
  * @returns 止めるなら理由。止めないなら null。
  */
-const contextualGitBlock = ({ dir, subcommand, args }: GitInvocation): Block | null => {
+const contextualGitBlock = (
+  { dir, subcommand, args }: GitInvocation,
+  branchOf: BranchLookup,
+): Block | null => {
   // --abort は進行中の merge を取り消すだけで履歴を変えない。
   const isMerge = subcommand === "merge" && !args.longs.has("--abort") && !args.longs.has("--quit");
   if (subcommand === "push" || isMerge) {
-    const branch = git(dir, ["branch", "--show-current"]);
+    const branch = branchOf(dir);
     if (branch !== null && protectedBranches.has(branch)) {
       return {
         operation: `保護ブランチ ${branch} での git ${subcommand}`,
@@ -348,21 +419,41 @@ const contextualGitBlock = ({ dir, subcommand, args }: GitInvocation): Block | n
   return null;
 };
 
+const isDirectory = (path: string): boolean => {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
 /**
  * コマンド全体を単純コマンドに分け、最初に見つかった遮断を返す。
  *
  * `cd <dir> && git ...` と `git -C <dir> ...` は、その dir を作業ディレクトリとして判定する。
+ * 先に switch / checkout したブランチは、後続の push / merge の現在ブランチとして扱う。
  *
  * @param command - Bash ツールに渡されたコマンド。
  * @param cwd - セッションの作業ディレクトリ。
  * @returns 止めるなら理由。止めないなら null。
  */
 const findBlock = (command: string, cwd: string): Block | null => {
-  let currentDir = cwd;
-  for (const words of splitSimpleCommands(command)) {
-    const invocation = interpret(words, currentDir);
+  const dirsByScope = new Map<string, string>();
+  // HEAD はファイルシステム上の状態なので、サブシェル内の switch も後続に効く。
+  const switchedBranches = new Map<string, string>();
+  const branchOf: BranchLookup = (dir) =>
+    switchedBranches.get(dir) ?? git(dir, ["branch", "--show-current"]);
+
+  for (const simpleCommand of splitSimpleCommands(command)) {
+    const invocation = interpret(
+      simpleCommand.words,
+      dirOfCommand(dirsByScope, simpleCommand, cwd),
+    );
     if (invocation.kind === "cd") {
-      currentDir = invocation.dir;
+      // 存在しない dir への cd は失敗し、作業ディレクトリは変わらない。
+      if (isDirectory(invocation.dir)) {
+        dirsByScope.set(simpleCommand.scope.join(","), invocation.dir);
+      }
     } else if (invocation.kind === "gh") {
       const block = ghBlock(invocation.gh);
       if (block !== null) {
@@ -372,9 +463,21 @@ const findBlock = (command: string, cwd: string): Block | null => {
       const { dir, subcommand } = invocation;
       const args = parseArgs(invocation.rest, optionSpecs[subcommand] ?? noValueSpec);
       const block =
-        lexicalGitBlock(subcommand, args) ?? contextualGitBlock({ dir, subcommand, args });
+        lexicalGitBlock(subcommand, args) ??
+        contextualGitBlock({ dir, subcommand, args }, branchOf);
       if (block !== null) {
         return block;
+      }
+      const switched = switchedBranch(subcommand, args);
+      if (switched !== null) {
+        const resolved =
+          switched === "-" ? git(dir, ["rev-parse", "--abbrev-ref", "@{-1}"]) : switched;
+        // 切り替え先が分からなければ、実際の HEAD を見る側に戻す。
+        if (resolved === null) {
+          switchedBranches.delete(dir);
+        } else {
+          switchedBranches.set(dir, resolved);
+        }
       }
     }
   }

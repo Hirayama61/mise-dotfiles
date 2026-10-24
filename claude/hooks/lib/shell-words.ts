@@ -2,6 +2,19 @@ type RedirectTarget = "drop" | "heredoc" | "heredoc-dash";
 
 type Heredoc = { delimiter: string; stripTabs: boolean };
 
+/** 単純コマンド 1 つ。 */
+export type SimpleCommand = {
+  words: string[];
+  /**
+   * 囲んでいるサブシェル・コマンド置換の経路。外側から順に、出現ごとに振った番号を並べる。
+   *
+   * サブシェル内の cd は外へ漏れないので、cd の効く範囲を経路の接頭辞で判定する。
+   */
+  scope: readonly number[];
+};
+
+type Terminator = ")" | "`" | null;
+
 // 後続の 1 語を実行するだけの前置語。これらを越えた先の語をプログラム名とみなす。
 const prefixWords = new Set([
   "!",
@@ -33,7 +46,7 @@ const assignmentPattern = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const doubleQuoteEscapable = '"\\$`\n';
 
 // ここで区切ると、前後が別の単純コマンドになる。
-const commandSeparators = ";&|`";
+const commandSeparators = ";&|";
 
 /**
  * heredoc の本文を読み飛ばす。
@@ -63,18 +76,21 @@ const skipHeredocBodies = (source: string, start: number, heredocs: Heredoc[]): 
  * シェルのコマンド文字列を単純コマンドの語の並びへ分ける。
  *
  * `&&` / `||` / `;` / `|` / `&` / 改行 / 括弧で区切り、クォートを外した語にする。
- * コマンド置換 `$(...)` の中身は、ダブルクォート内でも別の単純コマンドとして取り出す。
+ * コマンド置換(`$(...)` とバッククォート)の中身は、ダブルクォート内でも別の単純コマンドとして取り出す。
  * heredoc の本文・コメント・リダイレクト先はデータなので語に含めない。
  * 字句だけの best-effort で、alias・変数展開・`bash -c` の中身は解かない。
  *
  * @param source - Bash ツールに渡されたコマンド。
- * @returns 単純コマンドごとの語の並び。空のコマンドは含めない。
+ * @returns 出現順の単純コマンド。空のコマンドは含めない。
  */
-export const splitSimpleCommands = (source: string): string[][] => {
-  const commands: string[][] = [];
+export const splitSimpleCommands = (source: string): SimpleCommand[] => {
+  const commands: SimpleCommand[] = [];
+  const scope: number[] = [];
+  let nextScopeId = 0;
   let index = 0;
 
-  const parse = (inSubstitution: boolean): void => {
+  // terminator は読み終わりの文字。null はコマンド全体の末尾まで読む。
+  const parse = (terminator: Terminator): void => {
     let words: string[] = [];
     let word = "";
     let inWord = false;
@@ -100,7 +116,7 @@ export const splitSimpleCommands = (source: string): string[][] => {
       finishWord();
       target = null;
       if (words.length > 0) {
-        commands.push(words);
+        commands.push({ words, scope: [...scope] });
       }
       words = [];
     };
@@ -135,6 +151,15 @@ export const splitSimpleCommands = (source: string): string[][] => {
       }
     };
 
+    const readSubstitution = (inner: Exclude<Terminator, null>): void => {
+      const outerDepth = scope.length;
+      scope.push(nextScopeId);
+      nextScopeId += 1;
+      parse(inner);
+      // 置換の中で閉じ忘れた括弧があっても、置換の外の経路へ戻す。
+      scope.length = outerDepth;
+    };
+
     const readDoubleQuoted = (): void => {
       index += 1;
       while (index < source.length && source[index] !== '"') {
@@ -145,7 +170,10 @@ export const splitSimpleCommands = (source: string): string[][] => {
           index += 2;
         } else if (char === "$" && next === "(") {
           index += 2;
-          parse(true);
+          readSubstitution(")");
+        } else if (char === "`") {
+          index += 1;
+          readSubstitution("`");
         } else {
           word += char;
           index += 1;
@@ -187,7 +215,15 @@ export const splitSimpleCommands = (source: string): string[][] => {
         readDoubleQuoted();
       } else if (char === "$" && next === "(") {
         index += 2;
-        parse(true);
+        readSubstitution(")");
+        inWord = true;
+      } else if (char === "`") {
+        index += 1;
+        if (terminator === "`") {
+          finishCommand();
+          return;
+        }
+        readSubstitution("`");
         inWord = true;
       } else if (char === ">" || char === "<" || (char === "&" && next === ">")) {
         // `2>` の 2 はファイル記述子でありコマンドの語ではない。
@@ -200,15 +236,20 @@ export const splitSimpleCommands = (source: string): string[][] => {
         readRedirection();
       } else if (char === "(") {
         finishCommand();
+        scope.push(nextScopeId);
+        nextScopeId += 1;
         depth += 1;
         index += 1;
       } else if (char === ")") {
         finishCommand();
         index += 1;
-        if (inSubstitution && depth === 0) {
+        if (terminator === ")" && depth === 0) {
           return;
         }
-        depth = Math.max(0, depth - 1);
+        if (depth > 0) {
+          scope.pop();
+          depth -= 1;
+        }
       } else if (commandSeparators.includes(char)) {
         finishCommand();
         index += 1;
@@ -221,7 +262,7 @@ export const splitSimpleCommands = (source: string): string[][] => {
     finishCommand();
   };
 
-  parse(false);
+  parse(null);
   return commands;
 };
 

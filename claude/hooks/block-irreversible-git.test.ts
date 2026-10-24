@@ -142,6 +142,23 @@ describe("block-irreversible-git", () => {
       expectDenied(`git -C ${mainClone} merge feat-x`, featureWorktree, "保護ブランチ main");
     });
 
+    test("存在しない dir への cd の後も、元の main で判定して deny する", () => {
+      expectDenied(`cd ${join(home, "missing")} || git push`, mainClone, "保護ブランチ main");
+    });
+
+    test("サブシェル内の cd は外へ漏らさず、後続の push を main で判定して deny する", () => {
+      expectDenied(`(cd ${featureWorktree} && pwd); git push`, mainClone, "保護ブランチ main");
+    });
+
+    test("先に main へ switch した後の merge は deny する", () => {
+      expectDenied("git switch main && git merge feat-x", featureWorktree, "保護ブランチ main");
+    });
+
+    test("main から feature ブランチを作って切り替えた後の push は通す", () => {
+      expectAllowed("git switch -c feat/new && git push -u origin feat/new", mainClone);
+      expectAllowed("git checkout -b feat/new2 && git push", mainClone);
+    });
+
     test("main での git merge --abort は通す", () => {
       expectAllowed("git merge --abort", mainClone);
     });
@@ -168,6 +185,7 @@ describe("block-irreversible-git", () => {
       ["git branch -D feat-x", "git branch -D"],
       ["git branch --delete --force feat-x", "git branch -D"],
       ["git worktree remove --force ../x", "git worktree remove --force"],
+      ['echo "`git reset --hard`"', "git reset --hard"],
     ])("%s を deny する", (command, operation) => {
       expectDenied(command, featureWorktree, operation);
     });

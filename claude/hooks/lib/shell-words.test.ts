@@ -2,10 +2,13 @@ import { describe, expect, test } from "bun:test";
 
 import { splitSimpleCommands, stripCommandPrefix } from "./shell-words.ts";
 
+const wordsOf = (source: string): string[][] =>
+  splitSimpleCommands(source).map((command) => command.words);
+
 describe("splitSimpleCommands", () => {
   describe("制御演算子と改行でつないだコマンドのとき", () => {
     test("&& / || / ; / | / & / 改行ごとに分ける", () => {
-      expect(splitSimpleCommands("a 1 && b || c; d | e & f\ng")).toEqual([
+      expect(wordsOf("a 1 && b || c; d | e & f\ng")).toEqual([
         ["a", "1"],
         ["b"],
         ["c"],
@@ -17,7 +20,7 @@ describe("splitSimpleCommands", () => {
     });
 
     test("サブシェルの括弧を区切りとして扱う", () => {
-      expect(splitSimpleCommands("(cd x && git push)")).toEqual([
+      expect(wordsOf("(cd x && git push)")).toEqual([
         ["cd", "x"],
         ["git", "push"],
       ]);
@@ -26,19 +29,19 @@ describe("splitSimpleCommands", () => {
 
   describe("クォートを含むとき", () => {
     test("クォートを外し、クォート内の演算子と空白で分けない", () => {
-      expect(splitSimpleCommands(`echo "git push -f && x" 'a;b' c\\ d`)).toEqual([
+      expect(wordsOf(`echo "git push -f && x" 'a;b' c\\ d`)).toEqual([
         ["echo", "git push -f && x", "a;b", "c d"],
       ]);
     });
 
     test("クォートで囲んだだけのオプションは素の語にする", () => {
-      expect(splitSimpleCommands(`git "push" '--force'`)).toEqual([["git", "push", "--force"]]);
+      expect(wordsOf(`git "push" '--force'`)).toEqual([["git", "push", "--force"]]);
     });
   });
 
   describe("コマンド置換を含むとき", () => {
     test("ダブルクォート内の $(...) も別のコマンドとして取り出す", () => {
-      expect(splitSimpleCommands(`echo "x $(git reset --hard) y"`)).toEqual([
+      expect(wordsOf(`echo "x $(git reset --hard) y"`)).toEqual([
         ["git", "reset", "--hard"],
         ["echo", "x  y"],
       ]);
@@ -53,31 +56,55 @@ describe("splitSimpleCommands", () => {
         `)"`,
       ].join("\n");
 
-      expect(splitSimpleCommands(command)).toEqual([["cat"], ["git", "commit", "-m", ""]]);
+      expect(wordsOf(command)).toEqual([["cat"], ["git", "commit", "-m", ""]]);
+    });
+  });
+
+  describe("バッククォートのコマンド置換を含むとき", () => {
+    test("ダブルクォート内のバッククォートも別のコマンドとして取り出す", () => {
+      expect(wordsOf('echo "`git reset --hard`"')).toEqual([
+        ["git", "reset", "--hard"],
+        ["echo", ""],
+      ]);
+    });
+
+    test("エスケープしたバッククォートは文字として扱う", () => {
+      expect(wordsOf('echo "\\`git reset --hard\\`"')).toEqual([["echo", "`git reset --hard`"]]);
+    });
+  });
+
+  describe("サブシェルとコマンド置換のスコープ", () => {
+    test("括弧の中のコマンドに、外と別のスコープを付ける", () => {
+      expect(splitSimpleCommands("(cd /tmp && pwd); git push")).toEqual([
+        { words: ["cd", "/tmp"], scope: [0] },
+        { words: ["pwd"], scope: [0] },
+        { words: ["git", "push"], scope: [] },
+      ]);
+    });
+
+    test("入れ子のコマンド置換は外側の経路を引き継ぐ", () => {
+      expect(splitSimpleCommands("(echo $(cd x))")).toEqual([
+        { words: ["cd", "x"], scope: [0, 1] },
+        { words: ["echo", ""], scope: [0] },
+      ]);
     });
   });
 
   describe("heredoc・コメント・リダイレクトを含むとき", () => {
     test("heredoc の本文を語に含めない", () => {
-      expect(splitSimpleCommands("cat <<EOF > out\ngit push -f\nEOF\nls")).toEqual([
-        ["cat"],
-        ["ls"],
-      ]);
+      expect(wordsOf("cat <<EOF > out\ngit push -f\nEOF\nls")).toEqual([["cat"], ["ls"]]);
     });
 
     test("<<- の終端行は先頭のタブを無視して照合する", () => {
-      expect(splitSimpleCommands("cat <<-END\n\tgit push -f\n\tEND\nls")).toEqual([
-        ["cat"],
-        ["ls"],
-      ]);
+      expect(wordsOf("cat <<-END\n\tgit push -f\n\tEND\nls")).toEqual([["cat"], ["ls"]]);
     });
 
     test("コメントを語に含めない", () => {
-      expect(splitSimpleCommands("ls # git push -f")).toEqual([["ls"]]);
+      expect(wordsOf("ls # git push -f")).toEqual([["ls"]]);
     });
 
     test("リダイレクト先とファイル記述子を語に含めない", () => {
-      expect(splitSimpleCommands("git checkout main > /dev/null 2>&1 &> log < in")).toEqual([
+      expect(wordsOf("git checkout main > /dev/null 2>&1 &> log < in")).toEqual([
         ["git", "checkout", "main"],
       ]);
     });
