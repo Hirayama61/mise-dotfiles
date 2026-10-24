@@ -47,6 +47,12 @@ Claude は main clone(`~/ghq` 配下のプライマリ作業ツリー)を編集�
 管理キーは `~/.claude/hooks` を指す hook の登録と `autoMemoryEnabled` だけで、それ以外には触れない。
 Claude Code が自動生成するファイル・ディレクトリは symlink 管理に含めない。
 
+## subagent の使い分け
+
+判断を伴わない委任作業(所在の探索・計画への質問生成・決まったコマンドの実行・差分と要件の照合・指摘 1 件の反証)は `claude/agents/` の Haiku 固定の役へ渡す。
+設計判断・実装・レビューの結論は主セッションが担う。
+役の定義は `model: haiku` と `effort: low` を固定し、書き込み系ツールを持たせない。
+
 ## Issue 起案
 
 Issue の起案は `/create-issue` で行う。作業中にその場で直せない摩擦や課題を見つけたら、実行を提案する。
