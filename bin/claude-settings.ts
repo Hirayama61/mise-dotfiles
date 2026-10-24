@@ -27,7 +27,10 @@ const managedHooks: HookTable = {
     },
     {
       matcher: "Bash",
-      hooks: [{ type: "command", command: hookCommand("block-irreversible-git.ts") }],
+      hooks: [
+        { type: "command", command: hookCommand("block-irreversible-git.ts") },
+        { type: "command", command: hookCommand("review-gate.ts") },
+      ],
     },
   ],
   WorktreeCreate: [{ hooks: [{ type: "command", command: hookCommand("create-worktree.ts") }] }],

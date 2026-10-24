@@ -49,6 +49,9 @@ panda_gray_lift = "#a4a8b8"
 "~/.claude/hooks" = "claude/hooks"
 # Haiku 固定の役割限定 subagent。同名の定義がプロジェクトの .claude/agents にあればそちらが優先される。
 "~/.claude/agents" = "claude/agents"
+# personal skill。~/.claude/skills には Claude Code が synced/ を作るのでディレクトリごとは symlink にせず、
+# symlink-each で各ファイルを ~/.claude/skills/<skill>/ 配下へ個別に symlink する。
+"~/.claude/skills" = { source = "claude/skills", mode = "symlink-each", exclude = ["*.test.ts"] }
 # ステータスラインの描画スクリプト。settings.json の statusLine は bin/claude-settings.ts が登録する。
 "~/.claude/statusline" = "claude/statusline"
 # fish の設定。活性化(mise / starship)もこのファイルに書く。

@@ -71,6 +71,7 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 | `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`・`statusLine`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない |
 | `~/.claude/statusline`                                                      | `claude/statusline` への symlink。ステータスラインの描画スクリプト                                                                         |
 | `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                           |
+| `~/.claude/skills/<skill>/`                                                 | `claude/skills/` の各ファイルへの個別の symlink(テストは除く)。Claude Code が `synced/` を置くので、ディレクトリは実体のまま               |
 | `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                               |
 | `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                              |
 | tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む  |
@@ -133,6 +134,58 @@ deny ルールは理由を返せず、`git -C . push` のような形もすり�
 
 auto memory は `autoMemoryEnabled: false` で全リポジトリ止める。
 必要なリポジトリだけ `.claude/settings.local.json` で ON にできる。
+
+### Claude Code の push 前レビューゲート
+
+`review-gate` hook が、承認済みの review flag が無い差分の `git push` を止める。
+止めたときは差分の risk と、人間が打つ `/code-review <effort> <base>..HEAD` を Claude に返す。
+以降の手順は personal skill `review-gate` が持つ。
+
+1. 人間が案内された `/code-review` を実行する
+2. Claude が指摘を修正・要確認・見送りに振り分け、修正したらコミットしてレビューからやり直す
+3. 修正と要確認が残っていなければ、Claude がレビュー前に控えた fingerprint で flag を発行する
+4. 同じ diff の push が通る
+
+`/code-review` は skill・hook・`claude -p` から起動しない。
+コストの大きいレビューを走らせるかは、人間の 1 回の入力で決める方針のため。
+レビューの観点は dotfiles に置かず、対象リポジトリの `CLAUDE.md` と `.claude/rules/` に任せる。
+
+差分は、upstream があればそれ、無ければ origin の既定ブランチと HEAD の merge-base から HEAD まで。
+未コミットの変更は push されないので含めない。
+fingerprint はこの差分の SHA-256 で、差分が 1 文字でも変われば flag は効かなくなる。
+flag の置き場所は `~/.local/state/claude-review-gate/<repo>-<hash>/<fingerprint>.json`。
+同じリポジトリの worktree はこの置き場所を共有する。
+
+| 項目                        | 内容                                             |
+| --------------------------- | ------------------------------------------------ |
+| `schema_version`            | `1`                                              |
+| `engine`                    | レビューしたエンジン(`code-review` など)。記録用 |
+| `effort`                    | レビューの effort。記録用                        |
+| `reviewed_diff_fingerprint` | 承認した差分の fingerprint                       |
+| `approved`                  | `true` のときだけ push を通す                    |
+| `reviewed_at`               | 発行日時                                         |
+
+hook が見るのは `schema_version`・`approved`・`reviewed_diff_fingerprint` だけで、エンジンが変わっても hook は変えずに済む。
+
+risk はパスの規則で決める(`claude/hooks/lib/review-gate.ts` の `riskRules`)。
+内容は読まず、案内する effort を決めるためだけに使う。
+
+| risk   | effort   | 該当するパス                                                                                                    |
+| ------ | -------- | --------------------------------------------------------------------------------------------------------------- |
+| HIGH   | `high`   | 認証(`auth*`・`oauth`・`login`・`session`・`jwt`・`password`・`credential`)                                     |
+| HIGH   | `high`   | migration・スキーマ(`migrations/`・`schema.{rb,prisma,sql,graphql}`・`*.sql`)                                   |
+| HIGH   | `high`   | 権限(`permission`・`rbac`・`acl`・`policy`・`role`・`guard`・`.claude/settings*.json`)                          |
+| HIGH   | `high`   | CI 設定(`.github/workflows/`・`.github/actions/`・`.gitlab-ci.yml`・`.circleci/`)                               |
+| HIGH   | `high`   | 秘密情報(`.env*`・`secret`・`*.pem`・`*.key`・`*.p12`)                                                          |
+| MEDIUM | `medium` | 依存の manifest と lockfile(`package.json`・`bun.lock`・`go.mod`・`Cargo.toml` など)、または 400 行を超える差分 |
+| LOW    | `low`    | それ以外                                                                                                        |
+
+名前の規則はパスの区切りごとに、語そのものか、語に `.`・`_`・`-` が続く形に当てる。`author.ts` は認証に当たらない。
+force push・dry-run・`--delete` は対象外で、force 系は `block-irreversible-git` が止める。
+git 外・差分の起点の不明・送るコミット無し・入力の解析失敗では止めない。
+人間の `!git push` は hook を通らないので縛らない。
+
+flag の発行は Claude 自身が行うので、ゲートは手順を飛ばさないための仕組みで、改ざんへの防御ではない。
 
 ### Claude Code のステータスライン
 
@@ -247,10 +300,13 @@ mise-dotfiles/
 │   │   └── typescript.md        コーディング規約(.ts を触るときだけ)
 │   ├── agents/         Haiku 固定の役割限定 subagent(~/.claude/agents から symlink)
 │   ├── statusline/     ステータスラインの描画スクリプト(~/.claude/statusline から symlink)
+│   ├── skills/         personal skill(~/.claude/skills/<skill>/ へファイルごとに symlink)
+│   │   └── review-gate/  push 前レビューの手順と、flag を発行する review-flag.ts
 │   └── hooks/          Claude Code の hook 本体(~/.claude/hooks から symlink)
 │       ├── block-main-clone-edit.ts   main clone 本体の編集を拒否する
 │       ├── block-irreversible-git.ts  不可逆な git / gh 操作を拒否する
 │       ├── create-worktree.ts         EnterWorktree の worktree を gwq の規約の場所に作る
+│       ├── review-gate.ts             review flag の無い差分の git push を拒否する
 │       └── lib/                       stdin の読み取り・git の判定・シェルの字句分割
 ├── .claude/
 │   ├── rules/          このリポジトリだけで読む規約群
