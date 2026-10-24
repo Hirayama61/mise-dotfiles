@@ -45,6 +45,10 @@ panda_gray_lift = "#a4a8b8"
 
 [dotfiles]
 "~/.claude/rules" = "claude/rules"
+# hooks の本体。settings.json への登録は bootstrap タスクの bin/claude-settings.ts が行う。
+"~/.claude/hooks" = "claude/hooks"
+# Haiku 固定の役割限定 subagent。同名の定義がプロジェクトの .claude/agents にあればそちらが優先される。
+"~/.claude/agents" = "claude/agents"
 # fish の設定。活性化(mise / starship)もこのファイルに書く。
 "~/.config/fish/config.fish" = "config/fish/config.fish"
 
@@ -131,8 +135,12 @@ run = "{{ mise_bin }} bootstrap --yes"
 # mise bootstrap が [tools] を入れた後に呼ぶ。宣言で書けない手続きだけを置く。
 [tasks.bootstrap]
 hide = true
-# agent-browser install は Chrome for Testing を ~/.agent-browser/browsers へ置く。導入済みなら何もしない。
-run = "agent-browser install"
+run = [
+  # Chrome for Testing を ~/.agent-browser/browsers へ置く。導入済みなら何もしない。
+  "agent-browser install",
+  # ~/.claude/settings.json は Claude Code 自身が書くので symlink にせず、管理キーだけをマージする。
+  "bun bin/claude-settings.ts",
+]
 
 [tasks.git-setup]
 description = "このリポジトリに commit / push できる状態にする(任意)"
