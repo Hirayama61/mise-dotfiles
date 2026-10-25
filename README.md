@@ -77,7 +77,8 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 | tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む  |
 | macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映   |
 | fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                    |
-| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。Homebrew と `~/.local/bin` の PATH、mise と starship の活性化                                      |
+| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。中身を持たない入口                                                                                 |
+| `~/.config/fish/conf.d/*.fish`                                              | `config/fish/conf.d/` の各ファイルへの symlink。PATH、mise・starship の活性化、tmux の自動起動を役割ごとのファイルに分ける                 |
 | Bun / node                                                                  | `[tools]` から入れる                                                                                                                       |
 | agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                         |
 | Chrome for Testing                                                          | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                                           |
@@ -290,7 +291,7 @@ mise-dotfiles/
 │       ├── ui.sh       install.sh の表示部品
 │       └── ui.ts       TypeScript タスクの表示と対話部品
 ├── config/             ツール設定(~/.config 配下へ symlink / Tera 描画)
-│   ├── fish/           fish の設定(PATH・mise・starship の活性化)
+│   ├── fish/           fish の設定(conf.d/ に PATH・mise・starship・tmux 自動起動を分けて置く)
 │   ├── git/            共有設定・hooks(Conventional Commits、機密語、secretlint)・ignore
 │   ├── tmux/           tmux.conf と popup スクリプト(jump / cheatsheet / split-even)
 │   ├── nvim/           Neovim(lazy.nvim)

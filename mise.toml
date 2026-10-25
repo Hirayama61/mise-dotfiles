@@ -54,8 +54,10 @@ panda_gray_lift = "#a4a8b8"
 "~/.claude/skills" = { source = "claude/skills", mode = "symlink-each", exclude = ["*.test.ts"] }
 # ステータスラインの描画スクリプト。settings.json の statusLine は bin/claude-settings.ts が登録する。
 "~/.claude/statusline" = "claude/statusline"
-# fish の設定。活性化(mise / starship)もこのファイルに書く。
+# fish の設定。config.fish は入口だけで、中身は conf.d/ に役割ごとに分ける。
+# conf.d には fish の拡張機能もファイルを置くので、ディレクトリごとは symlink にせず symlink-each にする。
 "~/.config/fish/config.fish" = "config/fish/config.fish"
+"~/.config/fish/conf.d" = { source = "config/fish/conf.d", mode = "symlink-each" }
 
 # ツール設定。ディレクトリごと symlink できるものはそのまま、配色が要るものだけ Tera で描画する。
 # ~/.gitconfig は端末ローカルの書き先(git config --global)として残し、共有設定の include だけを管理する。
