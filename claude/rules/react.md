@@ -8,6 +8,8 @@ paths:
 
 関数コンポーネントと hooks(React 16.8 以降)を前提とする。
 型・関数・命名は `typescript.md` に従う。
+コード例は TSX で書く。
+`.jsx` では型注釈と型引数を外して書く。
 
 ## 基本方針
 
@@ -191,5 +193,5 @@ useEffect(() => {
 
 - `useMemo`・`useCallback`・`React.memo` は性能の最適化として扱い、正しさをこれらで担保しない。
   外しても結果が変わらないコードを書く。
-- Effect の実行回数を抑える目的で、依存配列へ入る関数を `useCallback` で包まない。
-  先に、その関数を Effect の中へ移せないかを検討する。
+- コンポーネント内で定義し、ひとつの Effect だけで使う関数は `useCallback` で包まず、その Effect の中へ移す。
+  props で受け取った callback のように移せない関数は、この限りでない。
