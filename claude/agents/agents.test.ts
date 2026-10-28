@@ -25,13 +25,14 @@ const parseFrontmatter = async (file: string): Promise<Frontmatter> => {
 const writingTools = ["Edit", "Write", "MultiEdit", "NotebookEdit"];
 
 describe("claude/agents の定義", () => {
-  test("5 役がそろっている", () => {
+  test("6 役がそろっている", () => {
     expect(agentFiles.toSorted()).toEqual([
       "diff-checker.md",
       "operator.md",
       "plan-questioner.md",
       "refuter.md",
       "scout.md",
+      "t_wada.md",
     ]);
   });
 
