@@ -1,0 +1,14 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main, "claude/**"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise run check
