@@ -2,3 +2,6 @@ node_modules
 
 # 設問形式の雛形で、"？" と助詞の重複が仕様。
 .github/pull_request_template.md
+
+# Routine に渡す指示文の雛形。運用ルールと同じ文面を保つため、文の長さと助詞の重複は直さない。
+claude/skills/polaris-setup/templates/routine-dev-loop.md
