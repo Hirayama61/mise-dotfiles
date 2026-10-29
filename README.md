@@ -240,6 +240,35 @@ tig と ghostty のテーマは端末の ANSI 16 色で表すため静的ファ�
 
 起動音を OFF にする `nvram` だけは defaults で書けないため、`mise run macos:startup-mute` に分けてある(sudo が要る)。
 
+## mise run refs が行うこと(任意)
+
+Claude Code に読ませる参照用 OSS を、ghq のレイアウト(`~/ghq/<host>/<owner>/<repo>`)へ clone する。
+clone が重く業務端末では要らないため、`mise run setup` は参照リポを飛ばす(`--skip repos`)。
+
+```sh
+mise run refs
+```
+
+宣言は `mise.toml` の `[bootstrap.repos]` 1 箇所にあり、キーは `~/ghq/` で始める。
+clone と収束は `mise bootstrap --only repos` に任せるので、変更のある作業ツリーや origin の違う場所は上書きせず失敗する。
+ghq の root(`GHQ_ROOT` か `git config ghq.root`)が `~/ghq` でない端末では、宣言と食い違うため clone せずに止まる。
+取得済みの参照リポを最新にするには `mise bootstrap repos update` を打つ。
+
+Claude Code への公開はリポジトリの `.claude/settings.json` が担う。
+
+| キー                                | 内容                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| `permissions.additionalDirectories` | 参照リポのパス。新しいセッションでもファイルを読める。設定ファイルは読み込まない           |
+| `permissions.deny`                  | 参照リポ配下への `Edit(...)`。読み取り専用の設定は無いため、編集系ツールを拒否して近似する |
+
+参照リポを足すときは、`[bootstrap.repos]` に 1 行足して生成をやり直し、両方を commit する。
+宣言と `.claude/settings.json` の一致は `mise run check` のテストが検査する。
+
+```sh
+mise run refs:settings
+mise run refs
+```
+
 ## 開発
 
 スクリプトと文書の検証には Bun を使う。
@@ -284,6 +313,7 @@ mise-dotfiles/
 ├── bin/
 │   ├── git-setup.ts    commit / push できる状態にする任意タスク
 │   ├── claude-settings.ts  ~/.claude/settings.json へ管理キーをマージ書き込みする
+│   ├── reference-repos.ts  参照用 OSS の clone と .claude/settings.json の生成
 │   └── lib/
 │       ├── fixtures/   テストが子プロセスとして実行する入口
 │       ├── palette.sh  Panda 配色の単一ソース
@@ -315,6 +345,7 @@ mise-dotfiles/
 │       ├── review-gate.ts             review flag の無い差分の git push を拒否する
 │       └── lib/                       stdin の読み取り・git の判定・シェルの字句分割
 ├── .claude/
+│   ├── settings.json   参照リポの公開設定(mise run refs:settings が生成する)
 │   ├── rules/          このリポジトリだけで読む規約群
 │   └── skills/         このリポジトリだけで使うスキル群
 │       └── create-issue/  Issue 起案の手順

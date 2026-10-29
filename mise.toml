@@ -76,6 +76,12 @@ panda_gray_lift = "#a4a8b8"
 "~/.config/gwq/config.toml" = "config/gwq/config.toml"
 "~/.config/mise/config.toml" = "config/mise/config.toml"
 
+# Claude Code に読ませる参照用 OSS。mise run refs が clone し、mise run setup は飛ばす。
+# キーは ~/ghq/ で始める(ghq の既定レイアウト)。足したら mise run refs:settings で
+# .claude/settings.json を生成し直す。宣言との一致は bin/reference-repos.test.ts が検査する。
+[bootstrap.repos]
+"~/ghq/github.com/jdx/mise" = { url = "https://github.com/jdx/mise.git", filter = "blob:none" }
+
 # ログインシェルを fish にする。/etc/shells への登録(初回は sudo)と chsh を mise が行う。
 # zsh の設定は管理しない。zsh の startup file にも書かない。
 [bootstrap.user]
@@ -137,7 +143,8 @@ value = { enabled = false }
 description = "リポジトリが管理するツールと設定を PC に適用する"
 # タスクの PATH に mise 自身は無いので、テンプレートで絶対パスを引く。
 # --yes が飛ばすのは確認プロンプトだけ。配置先に実体がある dotfile は上書きせず止まる。
-run = "{{ mise_bin }} bootstrap --yes"
+# 参照リポ([bootstrap.repos])の clone は重く業務端末では要らないので、mise run refs に分ける。
+run = "{{ mise_bin }} bootstrap --yes --skip repos"
 
 # mise bootstrap が [tools] を入れた後に呼ぶ。宣言で書けない手続きだけを置く。
 [tasks.bootstrap]
@@ -154,6 +161,20 @@ description = "このリポジトリに commit / push できる状態にする(�
 # タスクの PATH に mise 自身は無いので、gh の導入に使う mise の絶対パスを渡す。
 env = { MISE_BIN = "{{ mise_bin }}" }
 run = "bun bin/git-setup.ts"
+
+[tasks.refs]
+description = "参照用 OSS を ghq 配下へ clone する(任意)"
+env = { MISE_BIN = "{{ mise_bin }}" }
+run = "bun bin/reference-repos.ts sync"
+
+[tasks."refs:settings"]
+description = "[bootstrap.repos] から .claude/settings.json を生成し直す"
+# JSON.stringify の出力は oxfmt の整形と違うので、mise run check を通る形に整え直す。
+run = [
+  "bun install --frozen-lockfile",
+  "bun bin/reference-repos.ts settings",
+  "bun x oxfmt .claude/settings.json",
+]
 
 [tasks.check]
 description = "TypeScript と Markdown を format / lint / type check / test で検証する"
