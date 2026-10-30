@@ -17,7 +17,8 @@ description: Polaris の開発係の 1 回分。{{REPO}} の `needs-fix` の PR 
 1. `.claude/skills/polaris-dev/reference/gh-rest.md` を読む。GitHub の操作はここにあるものだけを使う。
 2. `AGENTS.md` を読む。頻度 × 影響の基準と「必ず見るもの」が判断の物差し。
 3. `.claude/skills/polaris-dev/reference/repo.md` があれば読む。このリポジトリ固有の手順 (VRT の基準画像の更新など) が書いてある。
-4. 検査は {{CHECK}}。`checker` が `Script not found` を返したら、`repo.md` か CLAUDE.md に書かれた検査コマンドで代える。
+4. `.claude/skills/polaris-refactor/reference/style.md` を読む。新しく書く部品・関数・テストはこの規約に合わせる。既存コードの違反は Issue の範囲外なら直さない。
+5. 検査は {{CHECK}}。`checker` が `Script not found` を返したら、`repo.md` か CLAUDE.md に書かれた検査コマンドで代える。
 
 ## 1. 対象を決める
 
@@ -59,6 +60,7 @@ PR に理由と選択肢 (A/B/C) をコメントして `hold` を付け、元の
 3. `git switch -c claude/issue-<番号>`。
 4. {{INSTALL}} を実行してから実装する。
    - 変更は Issue の範囲に限る。ついでの改善をしない。CLAUDE.md の「守ること」に従う。
+   - 新しく書く部品・関数・テストは `style.md` の規約に合わせる。MUST の違反はレビュー係が差し戻す。
    - 純粋関数に切り出せる部分にはテストを足す。AGENTS.md の「必ず見るもの」に触れる変更は、テストで契約を確かめる。
    - ブラウザでの目視確認はできない前提。見た目は既存の CSS 変数とパターンに揃える。
    - 実装中に判断の要る点が出たら、手順 3-2 と同じく質問して終わる。

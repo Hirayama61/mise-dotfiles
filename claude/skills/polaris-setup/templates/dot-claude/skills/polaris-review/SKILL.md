@@ -16,7 +16,7 @@ PR の状態集めは `collector`、検査の実行は `checker`、指摘の再�
 
 1. `.claude/skills/polaris-dev/reference/gh-rest.md` を読む。
 2. `AGENTS.md` を読む。頻度 × 影響の基準と「必ず見るもの」が物差し。
-3. `.claude/skills/polaris-refactor/reference/style.md` に本人の規約が書かれていれば読む。
+3. `.claude/skills/polaris-refactor/reference/style.md` を読む。規約の項目 ID と重さがある。
 4. `.claude/skills/polaris-dev/reference/repo.md` があれば読む。このリポジトリ固有の見どころ (VRT の基準画像など) が書いてある。
 
 ## 1. 対象を決める
@@ -65,7 +65,9 @@ Codex の行コメント (`commit_id` が head の sha のもの) は、自分�
 再現手順を自分で追えないものは指摘にしない。複数ファイルを横断して追うときは、指摘 1 件ごとに経路集めを `explorer` へ出す。
 
 指摘は 1 件ごとに `頻度 N × 影響 M = 積`、再現手順、影響範囲、直し方の案 (各 1〜3 行)。
-好み・命名・書式は指摘しない。`style.md` の規約に反するだけのものは積 5 未満として扱う。
+`style.md` の規約違反は AGENTS.md の「指摘の書き方」に従う。MUST は積 25、SHOULD は積 5〜24 (頻度 × 影響で付け直す)、NITS は書かない。
+MUST でも、この PR が変えていない行にある既存の違反は積 5〜24 として扱う (承認して Issue に回す)。
+`style.md` に無い好み・命名・書式は指摘しない。
 
 ## 4. 書く
 
