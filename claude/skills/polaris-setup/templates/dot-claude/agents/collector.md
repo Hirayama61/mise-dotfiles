@@ -13,6 +13,7 @@ PR の状態を集め、主セッションの判断材料としてまとめる�
 ## 手順
 
 `gh api` の GET だけを使う。早見表は `.claude/skills/polaris-dev/reference/gh-rest.md`。
+一覧 (差分のファイル、コメント、行コメント、レビュー、check-runs) は `--paginate` と `per_page=100` で全件を取る。
 
 1. PR 本体: head の sha、ラベル、`mergeable_state`、本文の `Closes #N`。
 2. 差分: `pulls/N/files` でファイルごとの追加・削除行数と patch を読む。
