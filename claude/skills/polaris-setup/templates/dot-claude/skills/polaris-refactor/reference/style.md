@@ -8,6 +8,7 @@
 
 React + TypeScript の規約。全文と直し方の例は mise-dotfiles の `claude/skills/frontend-review/references/` にあり、ID はそれと同じ。
 重さの読み替え: MUST は積 25 (PR を止める)、SHOULD は積 5〜24 (頻度 × 影響で付け直す)、NITS は書かない。
+MUST でも、PR が変えていない行にある既存の違反は積 5〜24 として扱い、別 Issue に回す。
 
 ### 分け方 (S)
 
