@@ -25,14 +25,23 @@ open の PR のうち、head が `claude/issue-` で始まり、draft でなく�
 次のどれかに当たるものは飛ばす。
 
 - コメントに `<!-- polaris-review: approve sha=<head の sha> -->` が既にある。
-- head の check-runs に success 以外 (実行中を含む) がある。
+- head の check-runs に実行中のもの (`status` が `queued` か `in_progress`) がある。
 - Codex が実行中で、2 時間経っていない。
   Codex の要約コメントは `chatgpt-codex-connector[bot]` の `<!-- codex-review-state:v1 {...} -->`。
   その JSON の `code_review.status` が `running` で、コメントの `updated_at` から 2 時間以内なら待つ。
   要約コメントが無いか、`commit_sha` が head と違うときは待たない。
 
 残ったものを番号の小さい順に 1 件。無ければ「対象なし」と報告して終わる。
-ここは `--jq` で絞った出力だけを読み、PR ごとの全文を読まない。
+
+その PR に完了して失敗した check-run があれば、レビューせずに差し戻す。
+失敗とは、`conclusion` が `success` `skipped` `neutral` のどれでもないもの。
+これも 1 回の実行で扱う 1 件に数える。
+
+- コメントを 1 つ書く。先頭行は `<!-- polaris-review: changes sha=<head の完全な sha> -->`。
+  続けて「CI の <job 名> が失敗」と、失敗した check-run の URL を書く。
+- `needs-fix` を付け、`approved` があれば外す。
+- 報告して終わる。手順 2 以降は行わない。
+  ここは `--jq` で絞った出力だけを読み、PR ごとの全文を読まない。
 
 ## 2. 材料を揃える
 

@@ -16,7 +16,8 @@ for (const { id } of stories) {
     const isUpdating = testInfo.config.updateSnapshots !== "none";
     test.skip(!process.env.CI && !isUpdating && !hasBaseline, "基準無し");
     await page.goto(`/iframe.html?id=${id}&viewMode=story`);
-    await page.locator("#storybook-root").waitFor();
+    // シートのような position: fixed の部品は root の大きさが 0 になるので、表示ではなく描画の有無で待つ。
+    await page.locator("#storybook-root > *").first().waitFor({ state: "attached" });
     await page.evaluate(() => document.fonts.ready);
     await expect(page).toHaveScreenshot(name, { fullPage: true });
   });

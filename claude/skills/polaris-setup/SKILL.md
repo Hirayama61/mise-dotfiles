@@ -111,7 +111,8 @@ worktree の中で、ないものだけを置く。
 
   ```sh
   tpl=~/.claude/skills/polaris-setup/templates/dot-claude
-  (cd "$tpl" && find . -type f) | while read -r f; do
+  # ~/.claude/skills 配下は mise の symlink-each で各ファイルが symlink なので、-L で辿る
+  (cd "$tpl" && find -L . -type f) | while read -r f; do
     [ -e ".claude/$f" ] || { mkdir -p ".claude/$(dirname "$f")"; cp "$tpl/$f" ".claude/$f"; }
   done
   ```
@@ -132,7 +133,7 @@ worktree の中で、ないものだけを置く。
   grep -rn '{{' CLAUDE.md AGENTS.md .github .claude playwright.config.ts 2>/dev/null | grep -v '\${{'
   ```
 
-手順 4b に進む。commit は手順 4b の最後でまとめて行う。
+手順 4b に進む。4b を行わないときは手順 4c に進む。
 
 ## 4b. 品質の土台を入れる
 
@@ -142,8 +143,20 @@ worktree の中で、ないものだけを置く。
 1. ないものだけ置く。既にあるファイルは置かない。
    `biome.json`、`.storybook/main.ts`、`.storybook/preview.ts`、`playwright.config.ts`、`playwright.vrt.config.ts`、`tsconfig.tooling.json`、`vrt/stories.spec.ts`、`.github/workflows/vrt-update.yml`。
    check.yml は手順 4 で `quality/.github/workflows/check.yml` から置いてある。
+   テストの雛形は、mise-dotfiles の `bun test` に拾われないよう末尾に `.tmpl` を付けてある (`vrt/stories.spec.ts.tmpl`)。置くときに `.tmpl` を外す。
+
+   ```sh
+   q=~/.claude/skills/polaris-setup/templates/quality
+   (cd "$q" && find -L . -type f ! -name package-scripts.json ! -path './.github/workflows/check.yml') | while read -r f; do
+     d="${f%.tmpl}"
+     [ -e "$d" ] || { mkdir -p "$(dirname "$d")"; cp "$q/$f" "$d"; }
+   done
+   ```
+
 2. `.storybook/preview.ts` の CSS の import を、`src/main.tsx` などのエントリが読む全体 CSS に合わせる。全体 CSS が無ければ import の行を消す。
 3. `package.json` の `scripts` に、`templates/quality/package-scripts.json` のキーを無いものだけ足す。既にあるキーは値が違っても変えない。
+   `check` だけは雛形の値をそのまま写さない。`lint` → `test` → `typecheck` → `build` の順に、`scripts` にあるものだけを `bun run <名前>` で `&&` につないで組み立てる。
+   雛形の値は 4 つが揃ったときの形。`test` や `build` の無いリポジトリでは、その部分を外す。
 4. 開発用の依存を足し、lockfile を更新する。版は polaris-mobile で動かしたものに揃える。
 
    ```sh
@@ -157,7 +170,10 @@ worktree の中で、ないものだけを置く。
 story と E2E の本体はリポジトリ固有なので置かない。
 `check:e2e` と `check:vrt` は `--pass-with-no-tests` 付きなので、無くても CI は落ちない。
 
-変更があれば、手順 4 と合わせて 1 つにまとめて commit する。メッセージは `chore: Polaris の開発ループ用の部品を入れる`。
+## 4c. commit して PR を出す
+
+手順 4b を行ったかどうかに関わらず行う。
+変更があれば、手順 4 と 4b の分を 1 つにまとめて commit する。メッセージは `chore: Polaris の開発ループ用の部品を入れる`。
 `git push -u origin polaris-setup` で push する。止まったら `/review-gate` の手順で flag を得てから push し直す。
 PR は `gh pr create --base <default> --head polaris-setup` で作る。本文に置いたものと、人が書く「守ること」が残っている旨を書く。
 

@@ -17,6 +17,7 @@ description: Polaris の開発係の 1 回分。{{REPO}} の `needs-fix` の PR 
 1. `.claude/skills/polaris-dev/reference/gh-rest.md` を読む。GitHub の操作はここにあるものだけを使う。
 2. `AGENTS.md` を読む。頻度 × 影響の基準と「必ず見るもの」が判断の物差し。
 3. `.claude/skills/polaris-dev/reference/repo.md` があれば読む。このリポジトリ固有の手順 (VRT の基準画像の更新など) が書いてある。
+4. 検査は {{CHECK}}。`checker` が `Script not found` を返したら、`repo.md` か CLAUDE.md に書かれた検査コマンドで代える。
 
 ## 1. 対象を決める
 
@@ -35,14 +36,20 @@ description: Polaris の開発係の 1 回分。{{REPO}} の `needs-fix` の PR 
 2. `git fetch origin claude/issue-N && git switch claude/issue-N`。
 3. 対象にするのは、レビュー係のコメント (`<!-- polaris-review: changes sha=... -->`) の指摘、そこに挙がった Codex の指摘、リポジトリの所有者のコメント。
 4. 「main と衝突している」という指摘なら、`git fetch origin main && git merge origin/main` で解消する。Issue の範囲を保ち、main 側の変更を消さない。マージコミットは残してよい。
-5. 指摘ごとに直すか直さないかを決める。AGENTS.md の積が 5 以上なら直す。指摘の外を書き換えない。
+5. 「CI の <job 名> が失敗」という指摘なら、まず再現する。
+   - {{INSTALL}} を実行し、`checker` に {{CHECK}} を回してもらう。落ちれば、その失敗を直す。
+   - 再現しない (e2e や vrt など、CI だけで動く検査の失敗) なら、`repo.md` に固有の手順があればそれに従う。
+   - 固有の手順が無ければ、`bunx playwright install chromium` を試す。
+     続けて、`checker` にその job の script (`check:e2e` など) を回してもらい、再現を図る。
+   - それでも再現しないか直せなければ、下の「直せないとき」に従う。
+6. 指摘ごとに直すか直さないかを決める。AGENTS.md の積が 5 以上なら直す。指摘の外を書き換えない。
    直す場所が brief で足りなければ、`explorer` に該当の指摘を渡して `file:line` を集めてもらう。
-6. {{INSTALL}} を実行してから直す。直したら `checker` に {{CHECK}} を回してもらう。失敗したら直して回し直す。
-7. commit は 1 つ (`fix: レビューの指摘を直す` のように常体)。`git push origin claude/issue-N`。
-8. PR にコメントを 1 つ書く。指摘ごとに「直した: <何を>」か「直さない: <理由 1 行>」。最後の行は `@codex review`。
-9. `needs-fix` を外す。`approved` は触らない (レビュー係が付け直す)。
+7. {{INSTALL}} を実行してから直す。直したら `checker` に {{CHECK}} を回してもらう。失敗したら直して回し直す。
+8. commit は 1 つ (`fix: レビューの指摘を直す` のように常体)。`git push origin claude/issue-N`。
+9. PR にコメントを 1 つ書く。指摘ごとに「直した: <何を>」か「直さない: <理由 1 行>」。最後の行は `@codex review`。
+10. `needs-fix` を外す。`approved` は触らない (レビュー係が付け直す)。
 
-直せない、または指摘が設計の判断を含むときは何も push しない。
+直せないとき、または指摘が設計の判断を含むときは何も push しない。
 PR に理由と選択肢 (A/B/C) をコメントして `hold` を付け、元の Issue に同じ質問をコメントして `needs-info` を付ける。
 
 ## 3. 新しい Issue の実装
