@@ -259,6 +259,6 @@ RemoteTrigger の `create` に次の body を 1 本ずつ渡す。`uuid` は Rou
 - 触らなかったもの: 既にあったため飛ばしたファイル・ラベル・Routine。
 - 人の作業: 2 つの PR のマージと、`enabled: false` で作った Routine の有効化。
   CLAUDE.md の「守ること」と AGENTS.md の「必ず見るもの」の見直し。
-  `polaris-uiux` のチェックリストと `polaris-refactor` の規約の差し替え。
+  `polaris-refactor` の規約 (`style.md`) の差し替え。
   品質の土台を入れたときは、story を 1 つ以上書く、E2E の煙テストを書く、マージ後に `vrt-update` を main で 1 回回す。
 - 残った不一致: 新旧両方あるラベル、`github` の値の違い、雛形のないスタック。
