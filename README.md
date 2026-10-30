@@ -64,24 +64,24 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 `mise bootstrap --yes` を実行し、`mise.toml` の宣言どおりにツールと設定を適用する。
 既に済んでいる項目は飛ばすので、何度実行しても同じ結果になり、2 度目からは sudo と対話が発生しない。
 
-| 対象                                                                        | 内容                                                                                                                                       |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                    |
-| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                      |
-| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`・`statusLine`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない |
-| `~/.claude/statusline`                                                      | `claude/statusline` への symlink。ステータスラインの描画スクリプト                                                                         |
-| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                           |
-| `~/.claude/skills/<skill>/`                                                 | `claude/skills/` の各ファイルへの個別の symlink(テストは除く)。Claude Code が `synced/` を置くので、ディレクトリは実体のまま               |
-| `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                               |
-| `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                              |
-| tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む  |
-| macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映   |
-| fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                    |
-| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。中身を持たない入口                                                                                 |
-| `~/.config/fish/conf.d/*.fish`                                              | `config/fish/conf.d/` の各ファイルへの symlink。PATH、mise・starship の活性化、tmux の自動起動を役割ごとのファイルに分ける                 |
-| Bun / node                                                                  | `[tools]` から入れる                                                                                                                       |
-| agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                         |
-| Chrome for Testing                                                          | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                                           |
+| 対象                                                                        | 内容                                                                                                                                           |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                        |
+| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                          |
+| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`・`statusLine`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない     |
+| `~/.claude/statusline`                                                      | `claude/statusline` への symlink。ステータスラインの描画スクリプト                                                                             |
+| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                               |
+| `~/.claude/skills/<skill>/`                                                 | `claude/skills/` の各ファイルへの個別の symlink(テストは除く)。Claude Code が `synced/` を置くので、ディレクトリは実体のまま                   |
+| `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                                   |
+| `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                                  |
+| tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む      |
+| macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映       |
+| fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                        |
+| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。中身を持たない入口                                                                                     |
+| `~/.config/fish/conf.d/*.fish`                                              | `config/fish/conf.d/` の各ファイルへの symlink。PATH、mise・starship の活性化、tmux の自動起動を役割ごとのファイルに分ける                     |
+| Bun / node                                                                  | `[tools]` から入れる                                                                                                                           |
+| agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                             |
+| Chrome for Testing                                                          | `bin/agent-browser-chrome.ts` が、`~/.agent-browser/browsers` に無いときだけ `agent-browser install` で取得する(約 180 MB)。失敗は警告に留める |
 
 シェルは fish に寄せる。zsh の設定は管理せず、zsh の startup file にも書かない。
 ログインシェルの変更は新しいターミナルから効く。
