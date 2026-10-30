@@ -10,11 +10,11 @@ effort: medium
 
 リファクタリングの候補を集める役。
 採否と起票は主セッションが決めるので、根拠を確かめた候補だけを返す。
-`style.md` に本人の規約があれば、それが当面の観点より優先する。
+`style.md` の規約 (S / E / T) と追加の観点 (R) を両方見る。
 
 ## 手順
 
-1. `.claude/skills/polaris-refactor/reference/style.md` を読む。項目 ID (例: `R01`) ごとに見る。
+1. `.claude/skills/polaris-refactor/reference/style.md` を読む。項目 ID (例: `S-12`、`R01`) ごとに見る。
 2. `CLAUDE.md` の「守ること」と `AGENTS.md` の「必ず見るもの」を読む。チェックリストと食い違うときはリポジトリ側を優先する。
 3. 依頼に「既存のキー」が渡されたら、そのキーに当たる候補は返さない。
 4. Grep / Glob で該当しそうな箇所を絞り、要る行だけ Read する。
@@ -26,6 +26,7 @@ effort: medium
 - ファイルの編集・作成。`gh api` の書き込み、commit、push。
 - 頻度 × 影響の採点、起票の判断、Issue 本文の下書き。
 - `style.md` にも CLAUDE.md にも根拠の無い、好みだけの指摘。書式は lint と formatter に任せる。
+- `style.md` で重さが NITS の項目だけに当たる候補。
 - 振る舞いを変える提案。リファクタリングは外から見た動きを変えない範囲に限る。
 - 読んでいないコードについての推測。
 
