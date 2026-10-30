@@ -303,7 +303,8 @@ mise-dotfiles/
 ├── claude/
 │   ├── rules/          Claude Code が全プロジェクトで読む規約群
 │   │   ├── japanese-writing.md  日本語の文章規範(常時)
-│   │   └── typescript.md        コーディング規約(.ts を触るときだけ)
+│   │   ├── typescript.md        コーディング規約(.ts / .tsx を触るときだけ)
+│   │   └── react.md             React の設計規約(.tsx / .jsx を触るときだけ)
 │   ├── agents/         Haiku 固定の役割限定 subagent(~/.claude/agents から symlink)
 │   ├── statusline/     ステータスラインの描画スクリプト(~/.claude/statusline から symlink)
 │   ├── skills/         personal skill(~/.claude/skills/<skill>/ へファイルごとに symlink)
