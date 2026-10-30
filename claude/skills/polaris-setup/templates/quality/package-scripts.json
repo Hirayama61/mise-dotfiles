@@ -1,0 +1,10 @@
+{
+  "lint": "biome check .",
+  "format": "biome format --write .",
+  "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tooling.json",
+  "check": "{{CHECK_SCRIPT}}",
+  "storybook": "storybook dev -p 6006",
+  "build-storybook": "storybook build --quiet",
+  "check:e2e": "playwright test --pass-with-no-tests",
+  "check:vrt": "bun run build-storybook && playwright test -c playwright.vrt.config.ts --pass-with-no-tests"
+}

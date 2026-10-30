@@ -1,0 +1,55 @@
+name: vrt-update
+
+# VRT の基準画像を Linux で作り直し、指定したブランチに commit する。
+# 手元の Mac で作った画像は描画が違うので使わない。
+# bot の push では workflow が自動で起動しないので、ここから check を起動する。
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 基準画像を更新するブランチ
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: vrt-update-${{ inputs.branch }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run build-storybook
+      - run: bunx playwright test -c playwright.vrt.config.ts --pass-with-no-tests --update-snapshots
+      - name: 変わった基準画像を commit する
+        id: commit
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          git add vrt/__screenshots__
+          if git diff --cached --quiet; then
+            echo "基準画像に変化なし"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "ci: VRT の基準画像を更新する"
+          git push origin "HEAD:refs/heads/$BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+      - name: push した commit で check を起動する
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ inputs.branch }}
+        run: gh workflow run check.yml --ref "$BRANCH" --repo "$GITHUB_REPOSITORY"

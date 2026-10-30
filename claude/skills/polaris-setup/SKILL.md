@@ -1,6 +1,6 @@
 ---
 name: polaris-setup
-description: GitHub リポジトリ 1 つを Polaris の開発ループに登録する対話型セットアップ。`/polaris-setup owner/repo` で、ラベル 5 種、CLAUDE.md の節、AGENTS.md、check.yml、polaris-data の `projects/<slug>.md`、開発ループの Routine を揃える。
+description: GitHub リポジトリ 1 つを Polaris の開発ループに登録する対話型セットアップ。`/polaris-setup owner/repo` で、ラベル 8 種、CLAUDE.md の節、AGENTS.md、check.yml、`.claude/agents` と `.claude/skills`、bun + Vite + React なら品質の土台 (Biome、Storybook、VRT、E2E)、polaris-data の `projects/<slug>.md`、Routine 5 本 (開発係、レビュー係、監査係 3 本) を揃える。
 ---
 
 # polaris-setup
@@ -12,7 +12,7 @@ description: GitHub リポジトリ 1 つを Polaris の開発ループに登録
 ## 守ること
 
 - 何度実行しても同じ結果になる。あるものは触らない。
-  ファイルは節やファイルが既にあれば書かない。ラベルは名前・色・説明を揃えるだけで消さない。Routine は同じリポジトリのものがあれば作らない。
+  ファイルは節やファイルが既にあれば書かない。ラベルは名前・色・説明を揃えるだけで消さない。Routine は同じリポジトリの同じ役割のものがあれば作らない。
 - 確認は手順 2 の 1 回だけ。以降は聞き直さず進め、決められないことは最後の報告に残す。
 - main clone (`~/ghq` 配下) を編集しない。hook が拒否する。編集は worktree で行う。
 - `git push` が `[review-gate]` で止まったら、`/review-gate` の手順に従う。flag を手で書いて迂回しない。
@@ -31,7 +31,7 @@ gh api repos/O/R/labels --paginate --jq '.[] | [.name, .color, .description] | @
 
 `CLAUDE.md` (`## 開発の流れ` と `## ラベル` の有無)、`AGENTS.md`、`.github/workflows/check.yml` の有無を `contents` で調べる。404 はないものとする。
 polaris-data の `projects/` に `github: O/R` を持つファイルがあれば、その slug と `name` を既定値にする。
-RemoteTrigger の `list` で、`sources` に `https://github.com/O/R` を持つ Routine を探す。RemoteTrigger が未読込なら `ToolSearch` の `select:RemoteTrigger` で読み込む。
+RemoteTrigger の `list` で、`sources` に `https://github.com/O/R` を持つ Routine を探す。役割は `name` の「開発係」「レビュー係」「UI/UX 監査係」「セキュリティ監査係」「リファクタリング監査係」で見分ける。RemoteTrigger が未読込なら `ToolSearch` の `select:RemoteTrigger` で読み込む。
 
 検査コマンドは上から順に最初に当てはまる行で推定する。
 
@@ -43,16 +43,24 @@ RemoteTrigger の `list` で、`sources` に `https://github.com/O/R` を持つ 
 | `Cargo.toml`                   | なし             | `cargo fetch`                    | `cargo test`、`cargo clippy -- -D warnings`、`cargo build` |
 
 `package.json` の `scripts` にない script と、`tsconfig.json` がないときの `tsc` は既定値から外す。
+`bun.lock` があり、`package.json` の依存に `vite` と `react` があれば、品質の土台 (手順 4b) の対象とする。
+このとき `{{CHECK}}` の既定値は `bun run check`、check.yml の雛形は `quality/.github/workflows/check.yml` にする。
 雛形のないスタックは check.yml を置かず、報告の残作業に入れる。
 
 ## 2. 確かめる
 
-AskUserQuestion を 1 回だけ呼び、次の 4 問をまとめて聞く。各問の先頭の選択肢を手順 1 の推定値にする。
+AskUserQuestion を 1 回だけ呼び、次の 4 問をまとめて聞く (1 回の呼び出しで聞けるのは 4 問まで)。各問の先頭の選択肢を手順 1 の推定値にする。
 
 1. polaris-data 上の slug と表示名 (既定: リポジトリ名と、既存の `projects/*.md` の `name`)。
 2. 検査コマンド (既定: 手順 1 の推定値)。
 3. 開発ループを動かす時間帯 (既定: 毎時 7〜24 時 JST = cron `0 0-15,22,23 * * *` UTC)。
-4. Routine を今作るか (既定: 作る)。
+4. 作るもの (multiSelect。既定は全部選択)。
+   - 「開発係とレビュー係の Routine」
+   - 「監査係 3 本の Routine」(UI/UX、セキュリティ、リファクタリング)
+   - 「品質の土台 (Biome / Storybook / VRT / E2E)」。手順 1 で対象外なら選択肢に出さない。
+
+「品質の土台」を選ばなかったときは、問 2 の既定値を bun の行の 3 コマンドに戻し、check.yml の雛形も `check-bun.yml` に戻す。
+問 2 と問 4 は同時に聞くので、品質の土台の対象なら、問 2 の選択肢に `bun run check` と 3 コマンドの両方を出す。
 
 ## 3. ラベルを揃える
 
@@ -63,20 +71,23 @@ gh api -X PATCH repos/O/R/labels/needs-input -f new_name=needs-info
 gh api -X PATCH 'repos/O/R/labels/status%3Aready' -f new_name=ready
 ```
 
-次に 5 種を揃える。一致するものは触らない。
+次に 8 種を揃える。一致するものは触らない。`audit:*` は監査ループを作らないときも揃える (後から Routine だけを足せるように)。
 
 ```sh
 gh api -X POST repos/O/R/labels -f name=<name> -f color=<色> -f description=<説明>   # ないもの
 gh api -X PATCH repos/O/R/labels/<name> -f color=<色> -f description=<説明>        # 色か説明が違うもの
 ```
 
-| ラベル       | 色       | 説明                                      |
-| ------------ | -------- | ----------------------------------------- |
-| `ready`      | `0e8a16` | 整理済み。開発ループが実装してよい        |
-| `needs-info` | `d876e3` | 質問中。答えは Polaris の質問タスクに書く |
-| `split`      | `fbca04` | 小さな Issue に分割した元。閉じるのは人   |
-| `hold`       | `e4e669` | 人の判断待ち。ループは触らない            |
-| `human`      | `0e8a16` | 人がやる Issue。ループは触らない          |
+| ラベル           | 色       | 説明                                      |
+| ---------------- | -------- | ----------------------------------------- |
+| `ready`          | `0e8a16` | 整理済み。開発ループが実装してよい        |
+| `needs-info`     | `d876e3` | 質問中。答えは Polaris の質問タスクに書く |
+| `split`          | `fbca04` | 小さな Issue に分割した元。閉じるのは人   |
+| `hold`           | `e4e669` | 人の判断待ち。ループは触らない            |
+| `human`          | `0e8a16` | 人がやる Issue。ループは触らない          |
+| `audit:uiux`     | `c5def5` | UI/UX 監査係が起票した                    |
+| `audit:security` | `b60205` | セキュリティ監査係が起票した              |
+| `audit:refactor` | `bfdadc` | リファクタリング監査係が起票した          |
 
 ## 4. リポジトリに部品を入れる
 
@@ -97,16 +108,78 @@ worktree の中で、ないものだけを置く。
 - `AGENTS.md`: `templates/AGENTS.md` を置く。README と主要なソースを読んで、プレースホルダを埋める。
   `{{USAGE}}` は誰がどのくらい使うか、`{{WORST}}` は最悪の壊れ方、`{{MUST_SEE_1}}`〜`{{MUST_SEE_3}}` は影響度が高くなりやすい 3 点。
   各項目に関わるファイルをコードスパンで添える。
+- `.claude/agents/` と `.claude/skills/`: `templates/dot-claude/` の下のファイルを、同じ相対パスに置く。既にあるファイルは置かない (中身が違っても上書きしない)。
+  中身はサブエージェント 6 つと、Routine が呼ぶスキル 5 つ。
+  監査ループを作らないときも置く。
+
+  ```sh
+  tpl=~/.claude/skills/polaris-setup/templates/dot-claude
+  # ~/.claude/skills 配下は mise の symlink-each で各ファイルが symlink なので、-L で辿る
+  (cd "$tpl" && find -L . -type f) | while read -r f; do
+    [ -e ".claude/$f" ] || { mkdir -p ".claude/$(dirname "$f")"; cp "$tpl/$f" ".claude/$f"; }
+  done
+  ```
+
 - `.github/workflows/check.yml`: 手順 1 の雛形をコピーする。`# {{CHECK_STEPS}}` の行は、検査コマンド 1 つにつき `- run: <コマンド>` 1 行に置き換える。
+- `.claude/skills/polaris-dev/reference/repo.md` はセットアップでは作らない。固有の手順が要るときに人が書く。
 
 置換の規則は次のとおり。
 
 - `{{REPO}}` は `O/R`。
+- `{{CHECK_SCRIPT}}` は手順 4b の `package-scripts.json` の `check` だけで使う。
+  `scripts` にあるものだけを `lint` → `test` → `typecheck` → `build` の順に並べ、`bun run <名前>` を `&&` でつなぐ。コードスパンで囲まない。
+- `{{BASE}}` は `vite.config.*` の `base` の値 (無ければ `/`)。手順 4b の `playwright.config.ts` にだけ出てくる。
 - `{{CHECK}}` と `{{INSTALL}}` は、コマンドをコードスパンで囲み「、」でつなぐ。
 - `<default>` が `main` でなければ、雛形と指示文の `main` をそのブランチ名に置き換える。
-- 置換後に `{{` が残っていないことを `grep -rn '{{' CLAUDE.md AGENTS.md .github/workflows/check.yml` で確かめる。
+- 置換するのは今回置いたファイルだけ。既にあったファイルは触らない。
+- 置換後に `{{` が残っていないことを確かめる。GitHub Actions の式 (`${{ ... }}`) は除く。
 
-変更があれば 1 つにまとめて commit する。メッセージは `chore: Polaris の開発ループ用の部品を入れる`。
+  ```sh
+  grep -rn '{{' CLAUDE.md AGENTS.md .github .claude playwright.config.ts package.json 2>/dev/null | grep -v '\${{'
+  ```
+
+手順 4b に進む。4b を行わないときは手順 4c に進む。
+
+## 4b. 品質の土台を入れる
+
+手順 2 の問 4 で「品質の土台」を選んだときだけ行う。同じ worktree で続ける。
+雛形は `templates/quality/` にあり、置き先と同じ相対パスで並んでいる。
+
+1. ないものだけ置く。既にあるファイルは置かない。
+   `biome.json`、`.storybook/main.ts`、`.storybook/preview.ts`、`playwright.config.ts`、`playwright.vrt.config.ts`、`tsconfig.tooling.json`、`vrt/stories.vrt.ts`、`.github/workflows/vrt-update.yml`。
+   check.yml は手順 4 で `quality/.github/workflows/check.yml` から置いてある。
+   VRT の spec は `vrt/stories.vrt.ts` で、`playwright.vrt.config.ts` の `testMatch` が `.vrt.ts` だけを拾う。`*.spec.ts` にしないのは、配布先の bun test や vitest の既定パターンに拾われないため。
+   雛形には、mise-dotfiles の検査に拾われないよう末尾に `.tmpl` を付けてある (`vrt/stories.vrt.ts.tmpl`)。置くときに `.tmpl` を外す。
+
+   ```sh
+   q=~/.claude/skills/polaris-setup/templates/quality
+   (cd "$q" && find -L . -type f ! -name package-scripts.json ! -path './.github/workflows/check.yml') | while read -r f; do
+     d="${f%.tmpl}"
+     [ -e "$d" ] || { mkdir -p "$(dirname "$d")"; cp "$q/$f" "$d"; }
+   done
+   ```
+
+2. `.storybook/preview.ts` の CSS の import を、`src/main.tsx` などのエントリが読む全体 CSS に合わせる。全体 CSS が無ければ import の行を消す。
+3. `package.json` の `scripts` に、`templates/quality/package-scripts.json` のキーを無いものだけ足す。既にあるキーは値が違っても変えない。
+   `check` の値は `{{CHECK_SCRIPT}}` で、`scripts` にあるものだけを `lint` → `test` → `typecheck` → `build` の順に `&&` でつないで置換する。
+   例: `test` の無いリポジトリでは `bun run lint && bun run typecheck && bun run build`。
+4. 開発用の依存を足し、lockfile を更新する。版は polaris-mobile で動かしたものに揃える。
+
+   ```sh
+   bun add -d @biomejs/biome@2.6.4 @playwright/test@1.64.1 storybook@^10.6.5 @storybook/react-vite@^10.6.5 @types/node@^24.19.2
+   ```
+
+5. `.gitignore` に `storybook-static`、`playwright-report`、`test-results` を無いものだけ足す。
+6. CLAUDE.md の「守ること」に「ランタイムの依存を足さない。開発用 (検査、Storybook、テスト) は可」の趣旨の行が無ければ、節の末尾に足す。節が無ければ、その 1 行だけで `## 守ること` を作る。
+7. `bun run format` で整形してから `bun run check` を通す。lint が既存コードで落ちたら、`biome check --write .` で直せる範囲だけ直す。手で直す必要が残れば、そのルールを `biome.json` で `off` にせず、報告の「人の作業」に書く。
+
+story と E2E の本体はリポジトリ固有なので置かない。
+`check:e2e` と `check:vrt` は `--pass-with-no-tests` 付きなので、無くても CI は落ちない。
+
+## 4c. commit して PR を出す
+
+手順 4b を行ったかどうかに関わらず行う。
+変更があれば、手順 4 と 4b の分を 1 つにまとめて commit する。メッセージは `chore: Polaris の開発ループ用の部品を入れる`。
 `git push -u origin polaris-setup` で push する。止まったら `/review-gate` の手順で flag を得てから push し直す。
 PR は `gh pr create --base <default> --head polaris-setup` で作る。本文に置いたものと、人が書く「守ること」が残っている旨を書く。
 
@@ -144,17 +217,33 @@ push が止まったら手順 4 と同じく `/review-gate` に従う。
 
 ## 6. Routine を作る
 
-手順 2 で「作らない」を選んだとき、または手順 1 で同じリポジトリの Routine が見つかったときは作らない。
-後者は既存の Routine の URL を報告する。
+手順 2 の問 4 で「開発係とレビュー係の Routine」を選ばなかったときは、開発係とレビュー係を作らない。
+「監査係 3 本の Routine」を選ばなかったときは、監査係 3 本を作らない。
+手順 1 で同じリポジトリ・同じ役割の Routine が見つかったものは作らず、その URL を報告する。
 
-`templates/routine-dev-loop.md` を手順 4 と同じ規則で置換し、全文を指示文にする。
-RemoteTrigger の `create` に次の body を渡す。`uuid` は新しい小文字の v4 UUID を作って入れる。
-時間帯を既定から変えたときは、`name` の括弧内と `cron_expression` をそれに合わせる。
+Routine は clone した main の `.claude/skills/` と `.claude/agents/` を読む。
+手順 4 の PR がまだマージされていなければ、`enabled` を `false` で作る。
+報告の「人の作業」には「マージ後の有効化」を書く。
+
+| 役割                   | 指示文の雛形               | `name`                                            | `cron_expression` (UTC) |
+| ---------------------- | -------------------------- | ------------------------------------------------- | ----------------------- |
+| 開発係                 | `routine-dev-loop.md`      | `<R> 開発係 (毎時 7-24 JST)`                      | `0 0-15,22,23 * * *`    |
+| レビュー係             | `routine-review-loop.md`   | `<R> レビュー係 (毎時 :40 7-24 JST)`              | `40 0-15,22,23 * * *`   |
+| UI/UX 監査係           | `routine-uiux-loop.md`     | `<R> UI/UX 監査係 (3 日おき 21:15 JST)`           | `15 12 */3 * *`         |
+| セキュリティ監査係     | `routine-security-loop.md` | `<R> セキュリティ監査係 (2 日おき 20:15 JST)`     | `15 11 */2 * *`         |
+| リファクタリング監査係 | `routine-refactor-loop.md` | `<R> リファクタリング監査係 (2 日おき 22:15 JST)` | `15 13 */2 * *`         |
+
+開発係とレビュー係の時間帯は手順 2 の問 3 に合わせる。既定から変えたときは、`name` の括弧内と `cron_expression` の時のフィールドを揃えて変える (分は 0 と 40 のまま)。
+監査係 3 本は時刻をずらしてあるので変えない。
+
+各雛形を手順 4 と同じ規則で置換し、全文を指示文にする。
+RemoteTrigger の `create` に次の body を 1 本ずつ渡す。`uuid` は Routine ごとに新しい小文字の v4 UUID を作って入れる。
+`allowed_tools` の `Agent` と `Skill` は外さない。スキルの実行とサブエージェントへの委任に要る。
 
 ```json
 {
-  "name": "<R> 開発係 (毎時 7-24 JST)",
-  "cron_expression": "0 0-15,22,23 * * *",
+  "name": "<表の name>",
+  "cron_expression": "<表の cron_expression>",
   "enabled": true,
   "job_config": {
     "ccr": {
@@ -171,7 +260,7 @@ RemoteTrigger の `create` に次の body を渡す。`uuid` は新しい小文�
         }
       ],
       "session_context": {
-        "allowed_tools": ["Bash", "Read", "Write", "Edit", "Glob", "Grep"],
+        "allowed_tools": ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Agent", "Skill"],
         "model": "claude-opus-5-5",
         "sources": [{ "git_repository": { "url": "https://github.com/O/R" } }]
       }
@@ -181,14 +270,17 @@ RemoteTrigger の `create` に次の body を渡す。`uuid` は新しい小文�
 ```
 
 環境 `env_018RTHQZ1mJG47167UUSL7LZ` は「Polaris」。
-作成後に `get` で `name`・`cron_expression`・`sources`・指示文の先頭行を確かめる。
+作成後に `get` で `name`・`cron_expression`・`enabled`・`sources`・`allowed_tools`・指示文の先頭行を確かめる。
 報告する URL は `https://claude.ai/code/routines/<trigger_id>`。
 
 ## 7. 報告する
 
-10 行以内で次を書く。
+15 行以内で次を書く。
 
-- やったこと: ラベル (作成・改名・更新の数)、置いたファイル、2 つの PR の URL、Routine の URL。
-- 触らなかったもの: 既にあったため飛ばしたもの。
-- 人の作業: 2 つの PR のマージ、CLAUDE.md の「守ること」、AGENTS.md の「必ず見るもの」の見直し。
+- やったこと: ラベル (作成・改名・更新の数)、置いたファイル (`.claude/` は数だけ)、2 つの PR の URL、Routine の役割と URL (最大 5 本)。
+- 触らなかったもの: 既にあったため飛ばしたファイル・ラベル・Routine。
+- 人の作業: 2 つの PR のマージと、`enabled: false` で作った Routine の有効化。
+  CLAUDE.md の「守ること」と AGENTS.md の「必ず見るもの」の見直し。
+  `polaris-refactor` の規約 (`style.md`) の差し替え。
+  品質の土台を入れたときは、story を 1 つ以上書く、E2E の煙テストを書く、マージ後に `vrt-update` を main で 1 回回す。
 - 残った不一致: 新旧両方あるラベル、`github` の値の違い、雛形のないスタック。
