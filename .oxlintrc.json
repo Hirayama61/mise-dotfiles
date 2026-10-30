@@ -12,8 +12,26 @@
     "typescript/no-explicit-any": "error",
     "typescript/ban-ts-comment": "error",
     "typescript/no-non-null-assertion": "error",
-    "typescript/consistent-type-definitions": ["error", "type"]
+    "typescript/consistent-type-definitions": ["error", "type"],
+    "max-lines-per-function": [
+      "error",
+      { "max": 50, "skipBlankLines": true, "skipComments": true }
+    ],
+    "complexity": ["error", { "max": 15 }],
+    "max-depth": ["error", { "max": 4 }],
+    "max-params": ["error", { "max": 6 }]
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "max-lines-per-function": "off",
+        "complexity": "off",
+        "max-depth": "off",
+        "max-params": "off"
+      }
+    }
+  ],
   "env": {
     "builtin": true
   }

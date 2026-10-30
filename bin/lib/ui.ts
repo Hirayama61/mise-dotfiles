@@ -49,22 +49,30 @@ export type Ui = {
   close: () => void;
 };
 
+/** 色付けと行送りの間。各部品が共有する。 */
+type Style = {
+  usesColor: boolean;
+  reset: string;
+  rgb: (color: PaletteColorName) => Rgb;
+  paint: (color: PaletteColorName, text: string) => string;
+  pauseLine: () => void;
+};
+
 const spinnerFrames = [..."⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"];
 
 const write = (text: string): void => {
   process.stdout.write(text);
 };
 
+const colorCode = ([red, green, blue]: Rgb): string => `\x1b[38;2;${red};${green};${blue}m`;
+
 /**
- * UI を初期化する。配色は palette.sh から読み込む。
+ * 端末と環境変数から、色を使うかと行送りの間を決める。
  *
- * 端末以外へ出力する時と NO_COLOR 指定時はエスケープを出さない。
- * ログやパイプに制御文字が混ざると読めなくなるため。
- *
- * @returns 表示と対話の部品一式。
+ * @param palette - palette.sh から読んだ配色。
+ * @returns 各部品が共有する色付けと行送りの間。
  */
-export const createUi = async (): Promise<Ui> => {
-  const palette = await loadPalette();
+const createStyle = (palette: ReadonlyMap<string, Rgb>): Style => {
   const usesColor = process.stdout.isTTY === true && (process.env.NO_COLOR ?? "") === "";
 
   // 出力が一度に流れると目線が追いつかないので、行ごとに間を置く。
@@ -80,7 +88,6 @@ export const createUi = async (): Promise<Ui> => {
     return value;
   };
 
-  const colorCode = ([red, green, blue]: Rgb): string => `\x1b[38;2;${red};${green};${blue}m`;
   const reset = usesColor ? "\x1b[0m" : "";
 
   const paint = (color: PaletteColorName, text: string): string =>
@@ -92,38 +99,48 @@ export const createUi = async (): Promise<Ui> => {
     }
   };
 
-  // 1 文字ずつ色を送って左右にグラデーションをかける。
-  const gradient = (text: string, from: Rgb, to: Rgb): string => {
-    if (!usesColor) {
-      return text;
-    }
+  return { usesColor, reset, rgb, paint, pauseLine };
+};
 
-    const chars = [...text];
-    const last = Math.max(chars.length - 1, 1);
-    const colored = chars.map((char, index) => {
-      const mix = (start: number, end: number): number =>
-        Math.trunc(start + ((end - start) * index) / last);
-      const [red, green, blue] = [mix(from[0], to[0]), mix(from[1], to[1]), mix(from[2], to[2])];
-      return `\x1b[38;2;${red};${green};${blue}m${char}`;
-    });
-    return `${colored.join("")}${reset}`;
-  };
+// 1 文字ずつ色を送って左右にグラデーションをかける。
+const gradient = (style: Style, text: string, from: Rgb, to: Rgb): string => {
+  if (!style.usesColor) {
+    return text;
+  }
 
-  const banner = (subtitle: string): void => {
-    write(
-      `\n  ${gradient("┏┳┓╻┏━┓┏━╸   ╺┳┓┏━┓╺┳╸┏━╸╻╻  ┏━╸┏━┓", rgb("PINK"), rgb("PURPLE_LIFT"))}`,
-    );
-    pauseLine();
-    write(
-      `\n  ${gradient("┃┃┃┃┗━┓┣╸     ┃┃┃ ┃ ┃ ┣╸ ┃┃  ┣╸ ┗━┓", rgb("PURPLE_LIFT"), rgb("BLUE_LIFT"))}`,
-    );
-    pauseLine();
-    write(`\n  ${gradient("╹ ╹╹┗━┛┗━╸   ╺┻┛┗━┛ ╹ ╹  ╹┗━╸┗━╸┗━┛", rgb("BLUE_LIFT"), rgb("MINT"))}`);
-    pauseLine();
-    write("\n\n");
-    write(`${paint("GRAY_LIFT", `  ${subtitle}`)}\n\n`);
-    pauseLine();
-  };
+  const chars = [...text];
+  const last = Math.max(chars.length - 1, 1);
+  const colored = chars.map((char, index) => {
+    const mix = (start: number, end: number): number =>
+      Math.trunc(start + ((end - start) * index) / last);
+    const [red, green, blue] = [mix(from[0], to[0]), mix(from[1], to[1]), mix(from[2], to[2])];
+    return `\x1b[38;2;${red};${green};${blue}m${char}`;
+  });
+  return `${colored.join("")}${style.reset}`;
+};
+
+const printBanner = (style: Style, subtitle: string): void => {
+  const { rgb, paint, pauseLine } = style;
+  write(
+    `\n  ${gradient(style, "┏┳┓╻┏━┓┏━╸   ╺┳┓┏━┓╺┳╸┏━╸╻╻  ┏━╸┏━┓", rgb("PINK"), rgb("PURPLE_LIFT"))}`,
+  );
+  pauseLine();
+  write(
+    `\n  ${gradient(style, "┃┃┃┃┗━┓┣╸     ┃┃┃ ┃ ┃ ┣╸ ┃┃  ┣╸ ┗━┓", rgb("PURPLE_LIFT"), rgb("BLUE_LIFT"))}`,
+  );
+  pauseLine();
+  write(
+    `\n  ${gradient(style, "╹ ╹╹┗━┛┗━╸   ╺┻┛┗━┛ ╹ ╹  ╹┗━╸┗━╸┗━┛", rgb("BLUE_LIFT"), rgb("MINT"))}`,
+  );
+  pauseLine();
+  write("\n\n");
+  write(`${paint("GRAY_LIFT", `  ${subtitle}`)}\n\n`);
+  pauseLine();
+};
+
+/** 1 行ずつ書き出す表示部品。 */
+const createLines = (style: Style) => {
+  const { paint, pauseLine } = style;
 
   const section = (title: string): void => {
     write(`\n${paint("SUBTLE", `   ${title}`)}\n\n`);
@@ -141,48 +158,93 @@ export const createUi = async (): Promise<Ui> => {
     pauseLine();
   };
 
-  const showCursor = (): void => {
-    if (usesColor) {
-      write("\x1b[?25h");
-    }
+  const ready = (text: string): void => {
+    write(`\n${paint("MINT", "   ready.")}${paint("GRAY_LIFT", `  ${text}`)}\n\n`);
+    pauseLine();
   };
 
-  const run = async (label: string, detail: string, command: readonly string[]): Promise<void> => {
-    if (!usesColor) {
-      const plain = Bun.spawnSync([...command], { stdout: "inherit", stderr: "inherit" });
-      if (!plain.success) {
-        throw new Error(`${command.join(" ")} が失敗した`);
-      }
+  // コマンドが 24 桁に収まらないと説明が直に続いて読めなくなるので、
+  // 桁が足りない時も最低 2 つは空ける。
+  const nextStep = (commandText: string, description: string): void => {
+    const padding = Math.max(24 - commandText.length, 2);
+    write(
+      `     ${paint("CYAN", commandText)}${" ".repeat(padding)}${paint("SUBTLE", description)}\n`,
+    );
+    pauseLine();
+  };
+
+  const clipboard = (commandText: string): void => {
+    if (Bun.which("pbcopy") === null) {
       return;
     }
+    Bun.spawnSync(["pbcopy"], { stdin: new TextEncoder().encode(`${commandText}\n`) });
+    write(`   ${paint("PINK", "📋 ")}${paint("GRAY_LIFT", "クリップボードに入れました")}\n`);
+    pauseLine();
+  };
 
-    const child = Bun.spawn([...command], { stdout: "pipe", stderr: "pipe" });
-    // 読み出しを止めるとパイプが詰まって子プロセスが止まるので、終了を待つ前に読み始める。
-    const stdoutText = new Response(child.stdout).text();
-    const stderrText = new Response(child.stderr).text();
+  return { section, status, note, ready, nextStep, clipboard };
+};
 
-    write("\x1b[?25l");
-    let frame = 0;
-    const render = (): void => {
-      const mark = spinnerFrames[frame % spinnerFrames.length] ?? "";
-      write(
-        `\r   ${paint("MINT", mark)} ${paint("FG", label.padEnd(14))}${paint("GRAY_LIFT", detail)}`,
-      );
-      frame += 1;
-    };
-    render();
-    const timer = setInterval(render, 100);
+const showCursorFor = (style: Style): void => {
+  if (style.usesColor) {
+    write("\x1b[?25h");
+  }
+};
 
-    const exitCode = await child.exited;
-    clearInterval(timer);
-    write("\r\x1b[K");
-    showCursor();
-
-    if (exitCode !== 0) {
-      process.stderr.write(`${await stdoutText}${await stderrText}`);
+/**
+ * コマンドを実行する。色を使う出力先ではスピナーで隠し、失敗した時だけログを吐き出す。
+ *
+ * @param style - 色付けの設定。
+ * @param label - スピナーの横に出す名前。
+ * @param detail - 名前の後ろに出す補足。
+ * @param command - 実行するコマンド。
+ */
+const runCommand = async (
+  style: Style,
+  label: string,
+  detail: string,
+  command: readonly string[],
+): Promise<void> => {
+  const { paint } = style;
+  if (!style.usesColor) {
+    const plain = Bun.spawnSync([...command], { stdout: "inherit", stderr: "inherit" });
+    if (!plain.success) {
       throw new Error(`${command.join(" ")} が失敗した`);
     }
+    return;
+  }
+
+  const child = Bun.spawn([...command], { stdout: "pipe", stderr: "pipe" });
+  // 読み出しを止めるとパイプが詰まって子プロセスが止まるので、終了を待つ前に読み始める。
+  const stdoutText = new Response(child.stdout).text();
+  const stderrText = new Response(child.stderr).text();
+
+  write("\x1b[?25l");
+  let frame = 0;
+  const render = (): void => {
+    const mark = spinnerFrames[frame % spinnerFrames.length] ?? "";
+    write(
+      `\r   ${paint("MINT", mark)} ${paint("FG", label.padEnd(14))}${paint("GRAY_LIFT", detail)}`,
+    );
+    frame += 1;
   };
+  render();
+  const timer = setInterval(render, 100);
+
+  const exitCode = await child.exited;
+  clearInterval(timer);
+  write("\r\x1b[K");
+  showCursorFor(style);
+
+  if (exitCode !== 0) {
+    process.stderr.write(`${await stdoutText}${await stderrText}`);
+    throw new Error(`${command.join(" ")} が失敗した`);
+  }
+};
+
+/** 標準入力から答えを読む対話部品。 */
+const createPrompts = (style: Style) => {
+  const { paint } = style;
 
   // node:readline は Bun だと 2 問目以降の question が返らないため、
   // Bun ネイティブの console の行イテレータで読む。イテレータを作り直すと
@@ -218,47 +280,29 @@ export const createUi = async (): Promise<Ui> => {
     return answer === "" || answer.toLowerCase().startsWith("y");
   };
 
-  const ready = (text: string): void => {
-    write(`\n${paint("MINT", "   ready.")}${paint("GRAY_LIFT", `  ${text}`)}\n\n`);
-    pauseLine();
-  };
-
-  // コマンドが 24 桁に収まらないと説明が直に続いて読めなくなるので、
-  // 桁が足りない時も最低 2 つは空ける。
-  const nextStep = (commandText: string, description: string): void => {
-    const padding = Math.max(24 - commandText.length, 2);
-    write(
-      `     ${paint("CYAN", commandText)}${" ".repeat(padding)}${paint("SUBTLE", description)}\n`,
-    );
-    pauseLine();
-  };
-
-  const clipboard = (commandText: string): void => {
-    if (Bun.which("pbcopy") === null) {
-      return;
-    }
-    Bun.spawnSync(["pbcopy"], { stdin: new TextEncoder().encode(`${commandText}\n`) });
-    write(`   ${paint("PINK", "📋 ")}${paint("GRAY_LIFT", "クリップボードに入れました")}\n`);
-    pauseLine();
-  };
-
   const close = (): void => {
     void stdinLines?.return?.();
   };
 
+  return { ask, confirm, close };
+};
+
+/**
+ * UI を初期化する。配色は palette.sh から読み込む。
+ *
+ * 端末以外へ出力する時と NO_COLOR 指定時はエスケープを出さない。
+ * ログやパイプに制御文字が混ざると読めなくなるため。
+ *
+ * @returns 表示と対話の部品一式。
+ */
+export const createUi = async (): Promise<Ui> => {
+  const style = createStyle(await loadPalette());
   return {
-    paint,
-    banner,
-    section,
-    status,
-    note,
-    run,
-    ask,
-    confirm,
-    ready,
-    nextStep,
-    clipboard,
-    showCursor,
-    close,
+    paint: style.paint,
+    banner: (subtitle) => printBanner(style, subtitle),
+    ...createLines(style),
+    run: (label, detail, command) => runCommand(style, label, detail, command),
+    ...createPrompts(style),
+    showCursor: () => showCursorFor(style),
   };
 };
