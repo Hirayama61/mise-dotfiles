@@ -123,6 +123,8 @@ worktree の中で、ないものだけを置く。
 置換の規則は次のとおり。
 
 - `{{REPO}}` は `O/R`。
+- `{{CHECK_SCRIPT}}` は手順 4b の `package-scripts.json` の `check` だけで使う。
+  `scripts` にあるものだけを `lint` → `test` → `typecheck` → `build` の順に並べ、`bun run <名前>` を `&&` でつなぐ。コードスパンで囲まない。
 - `{{BASE}}` は `vite.config.*` の `base` の値 (無ければ `/`)。手順 4b の `playwright.config.ts` にだけ出てくる。
 - `{{CHECK}}` と `{{INSTALL}}` は、コマンドをコードスパンで囲み「、」でつなぐ。
 - `<default>` が `main` でなければ、雛形と指示文の `main` をそのブランチ名に置き換える。
@@ -130,7 +132,7 @@ worktree の中で、ないものだけを置く。
 - 置換後に `{{` が残っていないことを確かめる。GitHub Actions の式 (`${{ ... }}`) は除く。
 
   ```sh
-  grep -rn '{{' CLAUDE.md AGENTS.md .github .claude playwright.config.ts 2>/dev/null | grep -v '\${{'
+  grep -rn '{{' CLAUDE.md AGENTS.md .github .claude playwright.config.ts package.json 2>/dev/null | grep -v '\${{'
   ```
 
 手順 4b に進む。4b を行わないときは手順 4c に進む。
@@ -141,9 +143,10 @@ worktree の中で、ないものだけを置く。
 雛形は `templates/quality/` にあり、置き先と同じ相対パスで並んでいる。
 
 1. ないものだけ置く。既にあるファイルは置かない。
-   `biome.json`、`.storybook/main.ts`、`.storybook/preview.ts`、`playwright.config.ts`、`playwright.vrt.config.ts`、`tsconfig.tooling.json`、`vrt/stories.spec.ts`、`.github/workflows/vrt-update.yml`。
+   `biome.json`、`.storybook/main.ts`、`.storybook/preview.ts`、`playwright.config.ts`、`playwright.vrt.config.ts`、`tsconfig.tooling.json`、`vrt/stories.vrt.ts`、`.github/workflows/vrt-update.yml`。
    check.yml は手順 4 で `quality/.github/workflows/check.yml` から置いてある。
-   テストの雛形は、mise-dotfiles の `bun test` に拾われないよう末尾に `.tmpl` を付けてある (`vrt/stories.spec.ts.tmpl`)。置くときに `.tmpl` を外す。
+   VRT の spec は `vrt/stories.vrt.ts` で、`playwright.vrt.config.ts` の `testMatch` が `.vrt.ts` だけを拾う。`*.spec.ts` にしないのは、配布先の bun test や vitest の既定パターンに拾われないため。
+   雛形には、mise-dotfiles の検査に拾われないよう末尾に `.tmpl` を付けてある (`vrt/stories.vrt.ts.tmpl`)。置くときに `.tmpl` を外す。
 
    ```sh
    q=~/.claude/skills/polaris-setup/templates/quality
@@ -155,8 +158,8 @@ worktree の中で、ないものだけを置く。
 
 2. `.storybook/preview.ts` の CSS の import を、`src/main.tsx` などのエントリが読む全体 CSS に合わせる。全体 CSS が無ければ import の行を消す。
 3. `package.json` の `scripts` に、`templates/quality/package-scripts.json` のキーを無いものだけ足す。既にあるキーは値が違っても変えない。
-   `check` だけは雛形の値をそのまま写さない。`lint` → `test` → `typecheck` → `build` の順に、`scripts` にあるものだけを `bun run <名前>` で `&&` につないで組み立てる。
-   雛形の値は 4 つが揃ったときの形。`test` や `build` の無いリポジトリでは、その部分を外す。
+   `check` の値は `{{CHECK_SCRIPT}}` で、`scripts` にあるものだけを `lint` → `test` → `typecheck` → `build` の順に `&&` でつないで置換する。
+   例: `test` の無いリポジトリでは `bun run lint && bun run typecheck && bun run build`。
 4. 開発用の依存を足し、lockfile を更新する。版は polaris-mobile で動かしたものに揃える。
 
    ```sh

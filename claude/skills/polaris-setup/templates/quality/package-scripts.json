@@ -2,7 +2,7 @@
   "lint": "biome check .",
   "format": "biome format --write .",
   "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tooling.json",
-  "check": "bun run lint && bun run test && bun run typecheck && bun run build",
+  "check": "{{CHECK_SCRIPT}}",
   "storybook": "storybook dev -p 6006",
   "build-storybook": "storybook build --quiet",
   "check:e2e": "playwright test --pass-with-no-tests",

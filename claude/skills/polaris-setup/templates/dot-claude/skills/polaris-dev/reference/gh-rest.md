@@ -47,5 +47,7 @@ Polaris のループのスキル (`polaris-*`) と、そのサブエージェン
 
 - `<!-- polaris-review: approve sha=<完全な sha> -->`: レビュー係がその sha を承認した。automerge が読む。
 - `<!-- polaris-review: changes sha=<完全な sha> -->`: レビュー係か automerge が、その sha に指摘を返した。開発係が直す。
+- `<!-- polaris-review: followup pr=<N> sha=<完全な sha> -->`: 承認した PR の残りの指摘 (積 5〜24) の Issue。
+  1 行目に置く。同じ PR と sha では 1 件だけ。
 - `<!-- polaris-audit: <kind> key=<キー> -->`: 監査係が起票した Issue の 1 行目。同じキーは二度起票しない。
 - `<!-- codex-review-state:v1 {...} -->`: Codex (`chatgpt-codex-connector[bot]`) の要約コメント。JSON の `code_review.status` と `commit_sha` で進み具合が分かる。

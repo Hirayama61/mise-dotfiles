@@ -4,7 +4,9 @@ const port = 6007;
 
 // 基準画像は CI (Linux) で作る。OS ごとに描画が違うので、Mac で作った画像を commit しない。
 export default defineConfig({
-  testDir: "vrt",
+  testDir: "./vrt",
+  // ユニットテスト (bun test や vitest の既定パターン *.spec.ts / *.test.ts) に拾われないよう、拡張子を .vrt.ts にしている。
+  testMatch: /.*\.vrt\.ts$/,
   snapshotPathTemplate: "{testDir}/__screenshots__/{arg}{ext}",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
