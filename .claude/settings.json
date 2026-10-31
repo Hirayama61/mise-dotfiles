@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "additionalDirectories": ["~/ghq/github.com/jdx/mise"],
+    "deny": ["Edit(~/ghq/github.com/jdx/mise/**)"]
+  }
+}
