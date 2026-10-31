@@ -25,7 +25,7 @@ description: Polaris の開発係の 1 回分。{{REPO}} の `needs-fix` の PR 
 上から順に、最初に見つかった 1 件だけを扱う。
 
 1. 指摘の修正: open の PR のうち head が `claude/issue-` で始まり、ラベル `needs-fix` を持ち `hold` を持たないもの。番号の小さい順に 1 件。→ 手順 2
-2. 新しい Issue: `ready` が付いた open の Issue のうち、`git ls-remote --heads origin` に `claude/issue-<番号>` が無いもの。番号の小さい順に 1 件。→ 手順 3
+2. 新しい Issue: open で `ready` を持ち、`hold` と `human` を持たない Issue。`git ls-remote --heads origin` に `claude/issue-<番号>` が無いものを番号の小さい順に 1 件。→ 手順 3
    - その Issue を `Closes #N` で指す PR が既にマージされていたら (閉じた PR の `body` を見る)、実装しない。Issue に「PR #M で完了済み」とコメントし、`ready` を外して次の Issue を見る。
 3. どちらも無ければ「対象なし」と報告して終わる。
 
