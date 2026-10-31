@@ -17,7 +17,7 @@ Apple Silicon macOS 用の dotfiles。
 | `install.sh`         | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone し、mise を導入する                                                                         |
 | `mise run git-setup` | このリポジトリに対して commit / push できる状態にする。commit するのはプライベート端末だけのため任意タスクとし、実行しなくても `mise run setup` へ進める |
 | `mise run setup`     | `mise bootstrap` で、`mise.toml` に宣言したツールと設定(dotfiles・shell activation・`[tools]`)を PC に適用する                                           |
-| `mise run check`     | TypeScript と Markdown を format / lint / type check / test で検証する                                                                                   |
+| `mise run check`     | TypeScript と Markdown を format / lint / type check / 重複検査 / test で検証する                                                                        |
 
 Homebrew の formula が要るときは `mise.toml` の `[bootstrap.packages]` に `brew:` で宣言する。Homebrew CLI の導入を書かない。
 
