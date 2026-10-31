@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "bin/*.ts",
+    "bin/lib/fixtures/*.ts",
+    "claude/hooks/*.ts",
+    "claude/skills/*/*.ts",
+    "claude/statusline/*.ts",
+    "**/*.test.ts"
+  ],
+  "project": ["**/*.ts"],
+  "ignoreExportsUsedInFile": true
+}
