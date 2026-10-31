@@ -143,10 +143,11 @@ run = "{{ mise_bin }} bootstrap --yes"
 [tasks.bootstrap]
 hide = true
 run = [
-  # Chrome for Testing を ~/.agent-browser/browsers へ置く。導入済みなら何もしない。
-  "agent-browser install",
   # ~/.claude/settings.json は Claude Code 自身が書くので symlink にせず、管理キーだけをマージする。
   "bun bin/claude-settings.ts",
+  # Chrome for Testing を ~/.agent-browser/browsers へ置く。どれかの版が入っていれば取りに行かない。
+  # 取得に失敗しても警告だけ出して正常終了するので、ダウンロードの失敗で setup は止まらない。
+  "bun bin/agent-browser-chrome.ts",
 ]
 
 [tasks.git-setup]
