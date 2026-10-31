@@ -38,6 +38,7 @@ Polaris のループのスキル (`polaris-*`) と、そのサブエージェン
 | コメント   | `gh api -X POST repos/{{REPO}}/issues/N/comments -f body='...'` (PR にも使える)                                             |
 | ラベル追加 | `gh api -X POST repos/{{REPO}}/issues/N/labels -f 'labels[]=needs-info'`                                                    |
 | ラベル削除 | `gh api -X DELETE repos/{{REPO}}/issues/N/labels/ready` (404 は無視)                                                        |
+| assignee   | `gh api -X POST repos/{{REPO}}/issues/N/assignees -f 'assignees[]=<login>'` (PR にも使える)                                 |
 
 本文が複数行なら、ファイルに書いて `-f body="$(cat file)"` で渡す。
 `-f` は文字列、`-F` は数値や真偽値として送る。
