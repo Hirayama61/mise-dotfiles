@@ -254,11 +254,14 @@ mise run check
 | ツール            | 対象                            | 内容              |
 | ----------------- | ------------------------------- | ----------------- |
 | oxfmt             | TypeScript / JSON / Markdown    | 整形              |
-| oxlint            | TypeScript                      | lint              |
+| oxlint            | TypeScript                      | lint と構造の上限 |
 | tsc               | TypeScript                      | 型検査            |
 | markdownlint-cli2 | Markdown                        | 構造の lint       |
 | textlint          | Markdown                        | 日本語の文章 lint |
 | bun test          | `bin/`・`claude/` の TypeScript | テスト            |
+
+oxlint の構造の上限は、関数の長さ 50 行(空行・コメント除く)・複雑度 15・ネスト深さ 4・引数 6。
+テスト(`*.test.ts`)には適用しない。
 
 テストだけを回すには `mise exec -- bun test` を使う。
 テストは対象の隣の `<対象>.test.ts` にあり、書き方と実機に残す範囲は `.claude/rules/testing.md` に従う。
