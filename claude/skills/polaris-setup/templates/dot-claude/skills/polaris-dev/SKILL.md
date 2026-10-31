@@ -68,7 +68,11 @@ PR に理由と選択肢 (A/B/C) をコメントして `hold` を付け、元の
 6. commit は 1 つ。日本語の常体で `feat:` `fix:` `docs:` `ci:` の接頭辞。
 7. `git push -u origin claude/issue-<番号>`。
 8. PR を作る。タイトルは Issue のタイトル。本文は「## やったこと」「## 確かめたこと」「## やらなかったこと」を各 3 行以内、末尾に `Closes #<番号>`。
-9. Issue に `PR: <URL>` とコメントする。
+9. 自動マージでないリポジトリなら、PR の assignee にリポジトリの owner を付ける。人がマージする PR だと見て分かるようにするため。
+   - 見分け方: `.github/workflows/automerge.yml` があれば自動マージのリポジトリ (polaris-mobile など)。無ければ自動マージでない。
+   - 自動マージのリポジトリでは assignee を付けない。
+   - owner の login は `{{REPO}}` の `/` より前。
+10. Issue に `PR: <URL>` とコメントする。
 
 ## やらないこと
 
