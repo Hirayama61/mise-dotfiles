@@ -27,6 +27,15 @@ type ParsedArgs = {
   hasDoubleDash: boolean;
 };
 
+/** parseArgs が組み立て中の ParsedArgs。 */
+type MutableParsedArgs = {
+  shorts: Set<string>;
+  longs: Set<string>;
+  positionals: string[];
+  values: Map<string, string>;
+  hasDoubleDash: boolean;
+};
+
 /** オプションの値が次の語に来るもの。値を誤ってオプションや引数と読まないために使う。 */
 type OptionSpec = { shortsWithValue: string; longsWithValue: readonly string[] };
 
@@ -123,44 +132,79 @@ const blockedGhActions: Record<string, ReadonlySet<string>> = {
 const discardWhy = "未コミットの変更や stash を復元できない形で捨てる。";
 const discardInstead = "捨ててよい変更かを人間に確認する。";
 
-const parseArgs = (args: readonly string[], spec: OptionSpec): ParsedArgs => {
-  const shorts = new Set<string>();
-  const longs = new Set<string>();
-  const positionals: string[] = [];
-  const values = new Map<string, string>();
-  let hasDoubleDash = false;
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index] ?? "";
-    if (hasDoubleDash) {
-      positionals.push(arg);
-    } else if (arg === "--") {
-      hasDoubleDash = true;
-    } else if (arg.startsWith("--")) {
-      const name = arg.split("=", 1)[0] ?? arg;
-      longs.add(name);
-      if (arg.includes("=")) {
-        values.set(name, arg.slice(name.length + 1));
-      } else if (spec.longsWithValue.includes(name)) {
-        index += 1;
-        values.set(name, args[index] ?? "");
-      }
-    } else if (arg.startsWith("-") && arg.length > 1) {
-      // `-am msg` の m 以降は値。`-mfix` のように値が続けて書かれた形もここで打ち切る。
-      for (let at = 1; at < arg.length; at += 1) {
-        const char = arg[at] ?? "";
-        shorts.add(char);
-        if (spec.shortsWithValue.includes(char)) {
-          const attached = arg.slice(at + 1);
-          index += attached === "" ? 1 : 0;
-          values.set(`-${char}`, attached === "" ? (args[index] ?? "") : attached);
-          break;
-        }
-      }
-    } else {
-      positionals.push(arg);
+/**
+ * `--name` / `--name=value` を読む。
+ *
+ * @returns 値として消費した後続の語の数。
+ */
+const readLongOption = (
+  args: readonly string[],
+  index: number,
+  spec: OptionSpec,
+  parsed: MutableParsedArgs,
+): number => {
+  const arg = args[index] ?? "";
+  const name = arg.split("=", 1)[0] ?? arg;
+  parsed.longs.add(name);
+  if (arg.includes("=")) {
+    parsed.values.set(name, arg.slice(name.length + 1));
+    return 0;
+  }
+  if (spec.longsWithValue.includes(name)) {
+    parsed.values.set(name, args[index + 1] ?? "");
+    return 1;
+  }
+  return 0;
+};
+
+/**
+ * `-fd` のような短縮オプションのまとまりを読む。
+ *
+ * @returns 値として消費した後続の語の数。
+ */
+const readShortOptions = (
+  args: readonly string[],
+  index: number,
+  spec: OptionSpec,
+  parsed: MutableParsedArgs,
+): number => {
+  const arg = args[index] ?? "";
+  // `-am msg` の m 以降は値。`-mfix` のように値が続けて書かれた形もここで打ち切る。
+  for (let at = 1; at < arg.length; at += 1) {
+    const char = arg[at] ?? "";
+    parsed.shorts.add(char);
+    if (spec.shortsWithValue.includes(char)) {
+      const attached = arg.slice(at + 1);
+      parsed.values.set(`-${char}`, attached === "" ? (args[index + 1] ?? "") : attached);
+      return attached === "" ? 1 : 0;
     }
   }
-  return { shorts, longs, positionals, values, hasDoubleDash };
+  return 0;
+};
+
+const parseArgs = (args: readonly string[], spec: OptionSpec): ParsedArgs => {
+  const parsed: MutableParsedArgs = {
+    shorts: new Set(),
+    longs: new Set(),
+    positionals: [],
+    values: new Map(),
+    hasDoubleDash: false,
+  };
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? "";
+    if (parsed.hasDoubleDash) {
+      parsed.positionals.push(arg);
+    } else if (arg === "--") {
+      parsed.hasDoubleDash = true;
+    } else if (arg.startsWith("--")) {
+      index += readLongOption(args, index, spec, parsed);
+    } else if (arg.startsWith("-") && arg.length > 1) {
+      index += readShortOptions(args, index, spec, parsed);
+    } else {
+      parsed.positionals.push(arg);
+    }
+  }
+  return parsed;
 };
 
 const hasOption = (args: ParsedArgs, long: string, short = ""): boolean =>
@@ -170,6 +214,43 @@ const expandHome = (path: string): string =>
   path === "~" || path.startsWith("~/") ? `${homedir()}${path.slice(1)}` : path;
 
 const programName = (word: string): string => word.split("/").at(-1) ?? word;
+
+/** git のグローバルオプションを越えて、サブコマンドと作業ディレクトリを取り出す。 */
+const interpretGit = (rest: readonly string[], cwd: string): Invocation => {
+  let dir = cwd;
+  let index = 0;
+  while (index < rest.length) {
+    const word = rest[index] ?? "";
+    if (word === "-C") {
+      dir = resolve(dir, expandHome(rest[index + 1] ?? "."));
+    }
+    if (gitGlobalsWithValue.has(word)) {
+      index += 2;
+    } else if (word.startsWith("-")) {
+      index += 1;
+    } else {
+      return { kind: "git", dir, subcommand: word, rest: rest.slice(index + 1) };
+    }
+  }
+  return { kind: "other" };
+};
+
+/** gh の先頭 2 つの位置引数を、サブコマンドと操作として取り出す。 */
+const interpretGh = (rest: readonly string[]): Invocation => {
+  const positionals: string[] = [];
+  for (let index = 0; index < rest.length && positionals.length < 2; index += 1) {
+    const word = rest[index] ?? "";
+    if (word === "-R" || word === "--repo") {
+      index += 1;
+    } else if (!word.startsWith("-")) {
+      positionals.push(word);
+    }
+  }
+  const [group, action] = positionals;
+  return group !== undefined && action !== undefined
+    ? { kind: "gh", gh: { group, action } }
+    : { kind: "other" };
+};
 
 /**
  * 単純コマンドを、遮断の判定に使う形へ解釈する。
@@ -185,37 +266,10 @@ const interpret = (words: readonly string[], cwd: string): Invocation => {
     return { kind: "cd", dir: resolve(cwd, expandHome(target ?? "~")) };
   }
   if (program !== undefined && programName(program) === "git") {
-    let dir = cwd;
-    let index = 0;
-    while (index < rest.length) {
-      const word = rest[index] ?? "";
-      if (word === "-C") {
-        dir = resolve(dir, expandHome(rest[index + 1] ?? "."));
-      }
-      if (gitGlobalsWithValue.has(word)) {
-        index += 2;
-      } else if (word.startsWith("-")) {
-        index += 1;
-      } else {
-        return { kind: "git", dir, subcommand: word, rest: rest.slice(index + 1) };
-      }
-    }
-    return { kind: "other" };
+    return interpretGit(rest, cwd);
   }
   if (program !== undefined && programName(program) === "gh") {
-    const positionals: string[] = [];
-    for (let index = 0; index < rest.length && positionals.length < 2; index += 1) {
-      const word = rest[index] ?? "";
-      if (word === "-R" || word === "--repo") {
-        index += 1;
-      } else if (!word.startsWith("-")) {
-        positionals.push(word);
-      }
-    }
-    const [group, action] = positionals;
-    return group !== undefined && action !== undefined
-      ? { kind: "gh", gh: { group, action } }
-      : { kind: "other" };
+    return interpretGh(rest);
   }
   return { kind: "other" };
 };
@@ -255,6 +309,73 @@ const switchedBranch = (subcommand: string, args: ParsedArgs): string | null => 
   return args.positionals[0] ?? null;
 };
 
+// サブコマンドごとの字句だけで決まる遮断。
+const lexicalGitBlocks: Record<string, (args: ParsedArgs) => Block | null> = {
+  push: (args) =>
+    isForcePush(args)
+      ? {
+          operation: "git push --force(--force-with-lease / -f を含む)",
+          why: "remote の履歴を書き換え、push 済みのコミットを消しうる。",
+          instead: "通常の push で済むよう、修正は新しいコミットとして積む。",
+        }
+      : null,
+  commit: (args) =>
+    hasOption(args, "--no-verify", "n")
+      ? {
+          operation: "git commit --no-verify",
+          why: "pre-commit / commit-msg フックを飛ばすと、lint と秘密情報の検査が抜ける。",
+          instead: "フックが落ちた原因を直してから commit する。",
+        }
+      : null,
+  reset: (args) =>
+    args.longs.has("--hard")
+      ? { operation: "git reset --hard", why: discardWhy, instead: discardInstead }
+      : null,
+  clean: (args) =>
+    hasOption(args, "--force", "f") && !hasOption(args, "--dry-run", "n")
+      ? { operation: "git clean -f", why: discardWhy, instead: discardInstead }
+      : null,
+  stash: (args) => {
+    const [first] = args.positionals;
+    return first === "drop" || first === "clear"
+      ? { operation: `git stash ${first}`, why: discardWhy, instead: discardInstead }
+      : null;
+  },
+  checkout: (args) => {
+    if (hasOption(args, "--force", "f")) {
+      return { operation: "git checkout -f", why: discardWhy, instead: discardInstead };
+    }
+    return args.hasDoubleDash || args.positionals.some(looksLikePathspec)
+      ? { operation: "git checkout <path>", why: discardWhy, instead: discardInstead }
+      : null;
+  },
+  switch: (args) =>
+    hasOption(args, "--discard-changes") || hasOption(args, "--force", "f")
+      ? { operation: "git switch --discard-changes", why: discardWhy, instead: discardInstead }
+      : null,
+  // --staged だけなら index を戻すだけで、作業ツリーの変更は残る。
+  restore: (args) =>
+    hasOption(args, "--worktree", "W") || !hasOption(args, "--staged", "S")
+      ? { operation: "git restore", why: discardWhy, instead: discardInstead }
+      : null,
+  branch: (args) =>
+    args.shorts.has("D") || (hasOption(args, "--delete", "d") && hasOption(args, "--force", "f"))
+      ? {
+          operation: "git branch -D",
+          why: "merge されていないコミットごとブランチを消す。",
+          instead: discardInstead,
+        }
+      : null,
+  worktree: (args) =>
+    args.positionals[0] === "remove" && hasOption(args, "--force", "f")
+      ? {
+          operation: "git worktree remove --force",
+          why: "worktree の未コミットの変更ごと消す。",
+          instead: discardInstead,
+        }
+      : null,
+};
+
 /**
  * 文脈を見ずに字句だけで決まる git の遮断。
  *
@@ -262,74 +383,10 @@ const switchedBranch = (subcommand: string, args: ParsedArgs): string | null => 
  * @param args - サブコマンドの引数。
  * @returns 止めるなら理由。止めないなら null。
  */
-const lexicalGitBlock = (subcommand: string, args: ParsedArgs): Block | null => {
-  const [first] = args.positionals;
-  switch (subcommand) {
-    case "push":
-      return isForcePush(args)
-        ? {
-            operation: "git push --force(--force-with-lease / -f を含む)",
-            why: "remote の履歴を書き換え、push 済みのコミットを消しうる。",
-            instead: "通常の push で済むよう、修正は新しいコミットとして積む。",
-          }
-        : null;
-    case "commit":
-      return hasOption(args, "--no-verify", "n")
-        ? {
-            operation: "git commit --no-verify",
-            why: "pre-commit / commit-msg フックを飛ばすと、lint と秘密情報の検査が抜ける。",
-            instead: "フックが落ちた原因を直してから commit する。",
-          }
-        : null;
-    case "reset":
-      return args.longs.has("--hard")
-        ? { operation: "git reset --hard", why: discardWhy, instead: discardInstead }
-        : null;
-    case "clean":
-      return hasOption(args, "--force", "f") && !hasOption(args, "--dry-run", "n")
-        ? { operation: "git clean -f", why: discardWhy, instead: discardInstead }
-        : null;
-    case "stash":
-      return first === "drop" || first === "clear"
-        ? { operation: `git stash ${first}`, why: discardWhy, instead: discardInstead }
-        : null;
-    case "checkout":
-      if (hasOption(args, "--force", "f")) {
-        return { operation: "git checkout -f", why: discardWhy, instead: discardInstead };
-      }
-      return args.hasDoubleDash || args.positionals.some(looksLikePathspec)
-        ? { operation: "git checkout <path>", why: discardWhy, instead: discardInstead }
-        : null;
-    case "switch":
-      return hasOption(args, "--discard-changes") || hasOption(args, "--force", "f")
-        ? { operation: "git switch --discard-changes", why: discardWhy, instead: discardInstead }
-        : null;
-    case "restore":
-      // --staged だけなら index を戻すだけで、作業ツリーの変更は残る。
-      return hasOption(args, "--worktree", "W") || !hasOption(args, "--staged", "S")
-        ? { operation: "git restore", why: discardWhy, instead: discardInstead }
-        : null;
-    case "branch":
-      return args.shorts.has("D") ||
-        (hasOption(args, "--delete", "d") && hasOption(args, "--force", "f"))
-        ? {
-            operation: "git branch -D",
-            why: "merge されていないコミットごとブランチを消す。",
-            instead: discardInstead,
-          }
-        : null;
-    case "worktree":
-      return first === "remove" && hasOption(args, "--force", "f")
-        ? {
-            operation: "git worktree remove --force",
-            why: "worktree の未コミットの変更ごと消す。",
-            instead: discardInstead,
-          }
-        : null;
-    default:
-      return null;
-  }
-};
+const lexicalGitBlock = (subcommand: string, args: ParsedArgs): Block | null =>
+  Object.hasOwn(lexicalGitBlocks, subcommand)
+    ? (lexicalGitBlocks[subcommand]?.(args) ?? null)
+    : null;
 
 /**
  * gh の外向き操作の遮断。

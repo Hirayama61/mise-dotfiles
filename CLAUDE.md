@@ -12,12 +12,12 @@ Apple Silicon macOS 用の dotfiles。
 
 ## 責務の境界
 
-| 対象                 | 役割                                                                                                                                                     |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `install.sh`         | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone し、mise を導入する                                                                         |
-| `mise run git-setup` | このリポジトリに対して commit / push できる状態にする。commit するのはプライベート端末だけのため任意タスクとし、実行しなくても `mise run setup` へ進める |
-| `mise run setup`     | `mise bootstrap` で、`mise.toml` に宣言したツールと設定(dotfiles・shell activation・`[tools]`)を PC に適用する                                           |
-| `mise run check`     | TypeScript と Markdown を format / lint / type check / 重複検査 / test で検証する                                                                        |
+| 対象                 | 役割                                                                                                                                                             |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `install.sh`         | ghq が入っていない環境でも ghq_root 配下にリポジトリを clone し、mise を導入する                                                                                 |
+| `mise run git-setup` | このリポジトリに対して commit / push できる状態にする。commit するのはプライベート端末だけのため任意タスクとし、実行しなくても `mise run setup` へ進める         |
+| `mise run setup`     | `mise bootstrap` で、`mise.toml` に宣言したツールと設定(dotfiles・shell activation・`[tools]`)を PC に適用する                                                   |
+| `mise run check`     | TypeScript と Markdown を format / lint / type check / 重複検査 / test で検証する。lint は関数の長さ 50 行・複雑度 15・深さ 4・引数 6 の上限を含む(テストは除く) |
 
 Homebrew の formula が要るときは `mise.toml` の `[bootstrap.packages]` に `brew:` で宣言する。Homebrew CLI の導入を書かない。
 
@@ -107,3 +107,20 @@ fish は man ページと HTML ドキュメントを同梱する。
 
 `agent-browser` は AI が Web ページを調査するためのブラウザ。`mise run setup` で導入する。
 動作確認や E2E に使うブラウザ(Playwright)は各リポジトリの `devDependencies` に置き、ここでは管理しない。
+
+## 開発の流れ
+
+クラウドの開発ループは `ready` ラベルの Issue だけを扱う。
+Issue 1 件につきブランチ `claude/issue-<番号>` と PR 1 本を作る。マージは人が行う。
+`mise run check` が通らない変更は出さない。
+レビューと修正の基準は `AGENTS.md` にある。
+
+## ラベル
+
+| ラベル       | 意味                                      |
+| ------------ | ----------------------------------------- |
+| `ready`      | 整理済み。開発ループが実装してよい        |
+| `needs-info` | 質問中。答えは Polaris の質問タスクに書く |
+| `split`      | 小さな Issue に分割した元。閉じるのは人   |
+| `hold`       | 人の判断待ち。ループは触らない            |
+| `human`      | 人がやる Issue。ループは触らない          |

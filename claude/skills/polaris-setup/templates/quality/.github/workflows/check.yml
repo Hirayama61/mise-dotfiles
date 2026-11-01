@@ -1,0 +1,66 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main, "claude/**"]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run check:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  vrt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run build-storybook
+      # 基準画像が 1 枚も無い間は落とさない。作った画像を artifact に上げ、vrt-update.yml で commit してもらう。
+      - id: vrt
+        run: |
+          if compgen -G "vrt/__screenshots__/*.png" > /dev/null; then
+            bunx playwright test -c playwright.vrt.config.ts --pass-with-no-tests
+          else
+            bunx playwright test -c playwright.vrt.config.ts --pass-with-no-tests --update-snapshots
+            echo "created=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::VRT の基準画像が無いので比較せずに作った。artifact の vrt-baseline を確かめ、vrt-update.yml を回して commit する。"
+          fi
+      - if: steps.vrt.outputs.created == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrt-baseline
+          path: vrt/__screenshots__
+          retention-days: 7
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrt-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

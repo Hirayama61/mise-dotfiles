@@ -64,24 +64,24 @@ GitHub の認証でブラウザを開けないため、表示されたコード�
 `mise bootstrap --yes` を実行し、`mise.toml` の宣言どおりにツールと設定を適用する。
 既に済んでいる項目は飛ばすので、何度実行しても同じ結果になり、2 度目からは sudo と対話が発生しない。
 
-| 対象                                                                        | 内容                                                                                                                                       |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                    |
-| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                      |
-| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`・`statusLine`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない |
-| `~/.claude/statusline`                                                      | `claude/statusline` への symlink。ステータスラインの描画スクリプト                                                                         |
-| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                           |
-| `~/.claude/skills/<skill>/`                                                 | `claude/skills/` の各ファイルへの個別の symlink(テストは除く)。Claude Code が `synced/` を置くので、ディレクトリは実体のまま               |
-| `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                               |
-| `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                              |
-| tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む  |
-| macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映   |
-| fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                    |
-| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。中身を持たない入口                                                                                 |
-| `~/.config/fish/conf.d/*.fish`                                              | `config/fish/conf.d/` の各ファイルへの symlink。PATH、mise・starship の活性化、tmux の自動起動を役割ごとのファイルに分ける                 |
-| Bun / node                                                                  | `[tools]` から入れる                                                                                                                       |
-| agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                         |
-| Chrome for Testing                                                          | `agent-browser install` が `~/.agent-browser/browsers` へ置く(約 180 MB)。導入済みなら何もしない                                           |
+| 対象                                                                        | 内容                                                                                                                                           |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.claude/rules`                                                           | `claude/rules` への symlink。symlink でない実体があれば上書きせず止まる                                                                        |
+| `~/.claude/hooks`                                                           | `claude/hooks` への symlink。Claude Code の hook 本体                                                                                          |
+| `~/.claude/settings.json`                                                   | 管理キー(hook の登録・`autoMemoryEnabled: false`・`statusLine`)だけをマージ書き込みする。model や theme などの端末ローカルの値には触れない     |
+| `~/.claude/statusline`                                                      | `claude/statusline` への symlink。ステータスラインの描画スクリプト                                                                             |
+| `~/.claude/agents`                                                          | `claude/agents` への symlink。Haiku 固定の役割限定 subagent 5 役                                                                               |
+| `~/.claude/skills/<skill>/`                                                 | `claude/skills/` の各ファイルへの個別の symlink(テストは除く)。Claude Code が `synced/` を置くので、ディレクトリは実体のまま                   |
+| `~/.config/{git,tmux,nvim,ghostty,tig,gwq,mise}`・`~/.config/starship.toml` | `config/<tool>/` の実体。配色が要る git の config / starship.toml / tmux.conf は Tera で描画し、他は symlink                                   |
+| `~/.gitconfig`                                                              | 共有設定(`~/.config/git/config`)の include ブロックだけを管理する。`user.name` などの端末ローカル値はそのまま                                  |
+| tig・cask 4 件                                                              | `[bootstrap.packages]` から入れる(ghostty / raycast / google-chrome / JetBrains Mono Nerd Font)。手動で入れた Chrome は置き換えず取り込む      |
+| macOS defaults                                                              | Finder / Dock / キーボード / トラックパッド / Spotlight ショートカットを `[bootstrap.macos.*]` から書く。Finder と Dock は再起動後に反映       |
+| fish                                                                        | Homebrew で入れ、`/etc/shells` に登録してログインシェルにする(初回は sudo を求められる)                                                        |
+| `~/.config/fish/config.fish`                                                | `config/fish/config.fish` への symlink。中身を持たない入口                                                                                     |
+| `~/.config/fish/conf.d/*.fish`                                              | `config/fish/conf.d/` の各ファイルへの symlink。PATH、mise・starship の活性化、tmux の自動起動を役割ごとのファイルに分ける                     |
+| Bun / node                                                                  | `[tools]` から入れる                                                                                                                           |
+| agent-browser                                                               | AI が Web ページを調査するためのブラウザ CLI。npm backend で入れる                                                                             |
+| Chrome for Testing                                                          | `bin/agent-browser-chrome.ts` が、`~/.agent-browser/browsers` に無いときだけ `agent-browser install` で取得する(約 180 MB)。失敗は警告に留める |
 
 シェルは fish に寄せる。zsh の設定は管理せず、zsh の startup file にも書かない。
 ログインシェルの変更は新しいターミナルから効く。
@@ -240,6 +240,35 @@ tig と ghostty のテーマは端末の ANSI 16 色で表すため静的ファ�
 
 起動音を OFF にする `nvram` だけは defaults で書けないため、`mise run macos:startup-mute` に分けてある(sudo が要る)。
 
+## mise run refs が行うこと(任意)
+
+Claude Code に読ませる参照用 OSS を、ghq のレイアウト(`~/ghq/<host>/<owner>/<repo>`)へ clone する。
+clone が重く業務端末では要らないため、`mise run setup` は参照リポを飛ばす(`--skip repos`)。
+
+```sh
+mise run refs
+```
+
+宣言は `mise.toml` の `[bootstrap.repos]` 1 箇所にあり、キーは `~/ghq/` で始める。
+clone と収束は `mise bootstrap --only repos` に任せるので、変更のある作業ツリーや origin の違う場所は上書きせず失敗する。
+ghq の root(`GHQ_ROOT` か `git config ghq.root`)が `~/ghq` でない端末では、宣言と食い違うため clone せずに止まる。
+取得済みの参照リポを最新にするには `mise bootstrap repos update` を打つ。
+
+Claude Code への公開はリポジトリの `.claude/settings.json` が担う。
+
+| キー                                | 内容                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| `permissions.additionalDirectories` | 参照リポのパス。新しいセッションでもファイルを読める。設定ファイルは読み込まない           |
+| `permissions.deny`                  | 参照リポ配下への `Edit(...)`。読み取り専用の設定は無いため、編集系ツールを拒否して近似する |
+
+参照リポを足すときは、`[bootstrap.repos]` に 1 行足して生成をやり直し、両方を commit する。
+宣言と `.claude/settings.json` の一致は `mise run check` のテストが検査する。
+
+```sh
+mise run refs:settings
+mise run refs
+```
+
 ## 開発
 
 スクリプトと文書の検証には Bun を使う。
@@ -254,11 +283,14 @@ mise run check
 | ツール            | 対象                            | 内容              |
 | ----------------- | ------------------------------- | ----------------- |
 | oxfmt             | TypeScript / JSON / Markdown    | 整形              |
-| oxlint            | TypeScript                      | lint              |
+| oxlint            | TypeScript                      | lint と構造の上限 |
 | tsc               | TypeScript                      | 型検査            |
 | markdownlint-cli2 | Markdown                        | 構造の lint       |
 | textlint          | Markdown                        | 日本語の文章 lint |
 | bun test          | `bin/`・`claude/` の TypeScript | テスト            |
+
+oxlint の構造の上限は、関数の長さ 50 行(空行・コメント除く)・複雑度 15・ネスト深さ 4・引数 6。
+テスト(`*.test.ts`)には適用しない。
 
 テストだけを回すには `mise exec -- bun test` を使う。
 テストは対象の隣の `<対象>.test.ts` にあり、書き方と実機に残す範囲は `.claude/rules/testing.md` に従う。
@@ -284,6 +316,7 @@ mise-dotfiles/
 ├── bin/
 │   ├── git-setup.ts    commit / push できる状態にする任意タスク
 │   ├── claude-settings.ts  ~/.claude/settings.json へ管理キーをマージ書き込みする
+│   ├── reference-repos.ts  参照用 OSS の clone と .claude/settings.json の生成
 │   └── lib/
 │       ├── fixtures/   テストが子プロセスとして実行する入口
 │       ├── palette.sh  Panda 配色の単一ソース
@@ -315,6 +348,7 @@ mise-dotfiles/
 │       ├── review-gate.ts             review flag の無い差分の git push を拒否する
 │       └── lib/                       stdin の読み取り・git の判定・シェルの字句分割
 ├── .claude/
+│   ├── settings.json   参照リポの公開設定(mise run refs:settings が生成する)
 │   ├── rules/          このリポジトリだけで読む規約群
 │   └── skills/         このリポジトリだけで使うスキル群
 │       └── create-issue/  Issue 起案の手順
