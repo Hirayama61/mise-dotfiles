@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "oxfmt --check . && oxlint && tsc --noEmit && markdownlint-cli2 && textlint \"**/*.md\""
+    "check": "oxfmt --check . && oxlint && tsc --noEmit && jscpd && markdownlint-cli2 && textlint \"**/*.md\""
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "jscpd": "^5.4.2",
     "markdownlint-cli2": "^0.23.2",
     "oxfmt": "0.64.0",
     "oxlint": "^1.79.0",

@@ -178,7 +178,7 @@ run = [
 ]
 
 [tasks.check]
-description = "TypeScript と Markdown を format / lint / type check / test で検証する"
+description = "TypeScript と Markdown を format / lint / type check / 重複検査 / test で検証する"
 run = ["bun install --frozen-lockfile", "bun run check", "bun test"]
 
 [tasks."macos:startup-mute"]
