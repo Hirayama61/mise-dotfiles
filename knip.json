@@ -8,6 +8,6 @@
     "claude/statusline/*.ts",
     "**/*.test.ts"
   ],
-  "project": ["**/*.ts"],
+  "project": ["**/*.ts", "!claude/skills/polaris-setup/templates/quality/**"],
   "ignoreExportsUsedInFile": true
 }

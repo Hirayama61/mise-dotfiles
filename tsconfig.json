@@ -17,5 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true
-  }
+  },
+  // 他のリポジトリに置く雛形。依存 (@playwright/test など) はこのリポジトリに無い。
+  "exclude": ["node_modules", "claude/skills/polaris-setup/templates/quality"]
 }
